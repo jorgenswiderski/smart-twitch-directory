@@ -1,36 +1,31 @@
-const path = require("path");
+const path = require('path');
 
 module.exports = {
-    mode: "development",
+    mode: 'development',
     entry: {
-        content: "./app/data/content.jsx",
-        background: "./app/data/background.js",
+        content: './app/data/content.tsx',
+        background: './app/data/background.ts',
     },
     output: {
-        path: path.resolve(__dirname, "dist"),
-        filename: "[name].js",
+        path: path.resolve(__dirname, 'dist'),
+        filename: '[name].js',
     },
     module: {
         rules: [
             {
-                test: /\.(js|jsx)$/,
+                test: /\.(ts|tsx)$/,
+                use: 'ts-loader',
                 exclude: /node_modules/,
-                use: {
-                    loader: "babel-loader",
-                    options: {
-                        presets: ["@babel/preset-env", "@babel/preset-react"],
-                    },
-                },
             },
         ],
     },
     resolve: {
-        extensions: [".js", ".jsx"],
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
     },
     // other webpack configurations
     devServer: {
         port: 8080,
         hot: true,
-        watchFiles: ["*"],
+        watchFiles: ['*'],
     },
 };

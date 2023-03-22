@@ -1,56 +1,54 @@
 // Generated on 2023-03-22 using generator-firefox-extension 0.4.0
 
-module.exports = function(grunt) {
-    'use strict';
-
+module.exports = function (grunt) {
     require('load-grunt-tasks')(grunt);
 
     // Configurable paths
-    var config = {
+    let config = {
         app: 'app',
-        dist: 'dist'
+        dist: 'dist',
     };
 
-    config = Object.assign(config, grunt.file.readJSON(config.app + '/package.json'));
+    config = Object.assign(config, grunt.file.readJSON(`${config.app}/package.json`));
 
     grunt.initConfig({
-        config: config,
+        config,
 
         shell: {
             run: {
-                command: 'jpm run --addon-dir <%= config.app %>'
+                command: 'jpm run --addon-dir <%= config.app %>',
             },
             post: {
-                command: 'jpm post --post-url http://localhost:8888/ --addon-dir <%= config.app %>'
+                command: 'jpm post --post-url http://localhost:8888/ --addon-dir <%= config.app %>',
       	    },
             build: {
                 command: [
                     'jpm xpi --addon-dir <%= config.app %>',
-                    'mv <%= config.app %>/<%= config.id %>-<%= config.version %>.xpi <%= config.dist %>'
-                ].join('&&')
-            }
+                    'mv <%= config.app %>/<%= config.id %>-<%= config.version %>.xpi <%= config.dist %>',
+                ].join('&&'),
+            },
         },
         watch: {
             xpi: {
                 files: ['<%= config.app %>/**/*', '!<%= config.app %>/**/*.xpi'],
-                tasks: ['shell:post']
-            }
+                tasks: ['shell:post'],
+            },
         },
         wiredep: {
             task: {
                 // Point to the files that should be updated when
                 // you run `grunt wiredep`
                 src: [
-                    'app/data/{,*}/*.html'
+                    'app/data/{,*}/*.html',
                 ],
                 options: {
                     // See wiredep's configuration documentation for the options
                     // you may pass:
 
                     // https://github.com/taptapship/wiredep#configuration
-                }
-            }
-        }
+                },
+            },
+        },
     });
 
     grunt.registerTask('run', ['shell:run']);

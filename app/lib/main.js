@@ -1,23 +1,21 @@
-"use strict";
-
 /**
  * Enable dubug mode
  * This allow to console.log in a firefox default configuration
  */
-require("sdk/preferences/service").set(
-    "extensions.sdk.console.logLevel",
-    "debug"
+require('sdk/preferences/service').set(
+    'extensions.sdk.console.logLevel',
+    'debug',
 );
 
-var data = require("sdk/self").data;
-var { ToggleButton } = require("sdk/ui/button/toggle");
-var { PageMod } = require("sdk/page-mod");
-var { Panel } = require("sdk/panel");
+const { data } = require('sdk/self');
+const { ToggleButton } = require('sdk/ui/button/toggle');
+const { PageMod } = require('sdk/page-mod');
+const { Panel } = require('sdk/panel');
 
-var popup = Panel({
-    contentURL: data.url("popup.html"),
-    onHide: function () {
-        button.state("window", { checked: false });
+const popup = Panel({
+    contentURL: data.url('popup.html'),
+    onHide() {
+        button.state('window', { checked: false });
     },
 });
 
@@ -34,21 +32,21 @@ function handleClick(state) {
 
 // Create a button
 var button = ToggleButton({
-    id: "show-popup",
-    label: "RSS Lector",
+    id: 'show-popup',
+    label: 'RSS Lector',
     icon: {
-        16: "./images/icon-16.png",
-        32: "./images/icon-32.png",
-        64: "./images/icon-64.png",
+        16: './images/icon-16.png',
+        32: './images/icon-32.png',
+        64: './images/icon-64.png',
     },
     onClick: handleClick,
 });
 
 // Create a content script
-var pageMod = PageMod({
-    include: ["*twitch.tv/directory/following/live"],
-    contentScriptFile: [data.url("content.js")],
-    contentStyleFile: [data.url("content.css")],
+const pageMod = PageMod({
+    include: ['*twitch.tv/directory/following/live'],
+    contentScriptFile: [data.url('content.js')],
+    contentStyleFile: [data.url('content.css')],
 });
 
 // Create a background script
