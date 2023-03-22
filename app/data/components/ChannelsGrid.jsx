@@ -34,13 +34,6 @@ const sampleData = [
     },
 ];
 
-// FIXME NOW
-const API_CLIENT_ID = "";
-const API_SECRET = "";
-
-// https://id.twitch.tv/oauth2/authorize?client_id=&redirect_uri=http://localhost:8080&response_type=token&scope=user%3Aread%3Afollows+user%3Aread%3Aemail
-const API_USER_TOKEN = "";
-
 export default function ChannelsGrid() {
     const [channels, setChannels] = useState([]);
     const [userId, setUserId] = useState();
@@ -94,6 +87,10 @@ export default function ChannelsGrid() {
             });
     }
 
+    const [timer, setTimer] = useState();
+    const UPDATE_ENABLED = true;
+    const UPDATE_INTERVAL = 60000;
+
     useEffect(() => {
         if (!userId) {
             fetchUserInfo().then((response) => {
@@ -103,6 +100,18 @@ export default function ChannelsGrid() {
         }
 
         updateChannels(userId);
+
+        if (UPDATE_ENABLED) {
+            if (timer) {
+                clearInterval(timer);
+            }
+
+            setTimer(
+                setInterval(() => {
+                    updateChannels(userId);
+                }, UPDATE_INTERVAL)
+            );
+        }
     }, [userId]);
 
     const [avatars, setAvatars] = useState({});
@@ -111,8 +120,6 @@ export default function ChannelsGrid() {
         if (channels.length <= 0) {
             return;
         }
-
-        console.log(channels);
 
         fetchUserInfo(channels.map((channel) => channel.user_id)).then(
             (response) => {
