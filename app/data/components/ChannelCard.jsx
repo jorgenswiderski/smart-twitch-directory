@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import styled from "styled-components";
+import { Link } from "react-router-dom";
 
 function Thumbnail({ data, width = 320, height = 180 }) {
     const url = useMemo(() => {
@@ -8,32 +9,50 @@ function Thumbnail({ data, width = 320, height = 180 }) {
             .replace("{height}", height);
     }, [data.thumbnail_url, width, height]);
 
+    const countText = useMemo(() => {
+        if (data.viewer_count >= 100000) {
+            return `${(data.viewer_count / 1000).toFixed(0)}K`;
+        } else if (data.viewer_count >= 1000) {
+            return `${(data.viewer_count / 1000).toFixed(1)}K`;
+        } else {
+            return `${data.viewer_count}`;
+        }
+    }, [data.viewer_count]);
+
     return (
-        <ThumbnailContainer>
-            <ChannelImage src={url} alt={data.title} />
-            <LiveIndicator>LIVE</LiveIndicator>
-            <ViewerText>{data.viewer_count} viewers</ViewerText>
-        </ThumbnailContainer>
+        <a href={`https://twitch.tv/${data.user_name}`}>
+            <ThumbnailContainer>
+                <ChannelImage src={url} alt={data.title} />
+                <LiveIndicator>LIVE</LiveIndicator>
+                <ViewerText>{countText} viewers</ViewerText>
+            </ThumbnailContainer>
+        </a>
     );
 }
 
 export function ChannelCard({ data }) {
-    // useEffect(() => {
-    //     console.log(data);
-    // }, [data]);
-
     return (
         <ChannelContainer key={data.id}>
             <Thumbnail data={data} />
             <Details>
-                <Avatar
-                    src={data.avatar_url}
-                    alt={`${data.user_name}'s avatar`}
-                />
+                <a href={`https://twitch.tv/${data.user_name}/videos`}>
+                    <Avatar
+                        src={data.avatar_url}
+                        alt={`${data.user_name}'s avatar`}
+                    />
+                </a>
                 <Info>
-                    <TitleText>{data.title}</TitleText>
-                    <NameText>{data.user_name}</NameText>
-                    <CategoryText>{data.game_name}</CategoryText>
+                    <a href={`https://twitch.tv/${data.user_name}`}>
+                        <TitleText>{data.title}</TitleText>
+                    </a>
+                    <a href={`https://twitch.tv/${data.user_name}`}>
+                        <NameText>{data.user_name}</NameText>
+                    </a>
+                    <a
+                        href={`https://twitch.tv/directory/game/${data.game_name}`}
+                    >
+                        <CategoryText>{data.game_name}</CategoryText>
+                    </a>
                 </Info>
             </Details>
         </ChannelContainer>
@@ -44,6 +63,14 @@ const ChannelContainer = styled.div`
     display: flex;
     flex-direction: column;
     overflow: hidden;
+
+    a:link,
+    a:visited,
+    a:hover,
+    a:active {
+        text-decoration: none;
+        color: inherit;
+    }
 `;
 
 const ThumbnailContainer = styled.div`
@@ -105,11 +132,13 @@ const InfoText = styled.div`
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+    color: rgb(173, 173, 184);
 `;
 
 const TitleText = styled(InfoText)`
     font-weight: bold;
     font-size: 14px;
+    color: inherit;
 `;
 
 const NameText = styled(InfoText)``;
