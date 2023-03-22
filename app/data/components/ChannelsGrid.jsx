@@ -3,6 +3,7 @@ import axiosJsonp from "axios-jsonp";
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { ChannelCard } from "./ChannelCard";
+import { InfinitySpin, TailSpin } from "react-loader-spinner";
 
 const GridContainer = styled.div`
     display: grid;
@@ -34,9 +35,12 @@ const sampleData = [
     },
 ];
 
+// FIXME NOW
+
 export default function ChannelsGrid() {
     const [channels, setChannels] = useState([]);
     const [userId, setUserId] = useState();
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // function authenticate() {
     //     axios
@@ -131,6 +135,7 @@ export default function ChannelsGrid() {
                 });
 
                 setAvatars(newAvatars);
+                setIsLoaded(true);
             }
         );
     }, [channels]);
@@ -143,9 +148,13 @@ export default function ChannelsGrid() {
 
     return (
         <GridContainer>
-            {userState.map((user) => (
-                <ChannelCard data={user} key={user.id} />
-            ))}
+            {isLoaded ? (
+                userState.map((user) => (
+                    <ChannelCard data={user} key={user.id} />
+                ))
+            ) : (
+                <TailSpin />
+            )}
         </GridContainer>
     );
 }

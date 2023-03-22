@@ -42,7 +42,10 @@ export function ChannelCard({ data }) {
                     />
                 </a>
                 <Info>
-                    <a href={`https://twitch.tv/${data.user_name}`}>
+                    <a
+                        href={`https://twitch.tv/${data.user_name}`}
+                        title={data.title}
+                    >
                         <TitleText>{data.title}</TitleText>
                     </a>
                     <a href={`https://twitch.tv/${data.user_name}`}>
@@ -118,6 +121,7 @@ const Avatar = styled.img`
     height: 40px;
     border-radius: 50%;
     margin-right: 10px;
+    overflow: hidden;
 `;
 
 const Info = styled.div`
