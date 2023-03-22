@@ -3,8 +3,8 @@ const path = require("path");
 module.exports = {
     mode: "development",
     entry: {
-        contentScript: "./app/data/content.js",
-        backgroundScript: "./app/data/background.js",
+        content: "./app/data/content.jsx",
+        background: "./app/data/background.js",
     },
     output: {
         path: path.resolve(__dirname, "dist"),
@@ -13,7 +13,7 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.js$/,
+                test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
                 use: {
                     loader: "babel-loader",
@@ -23,5 +23,14 @@ module.exports = {
                 },
             },
         ],
+    },
+    resolve: {
+        extensions: [".js", ".jsx"],
+    },
+    // other webpack configurations
+    devServer: {
+        port: 8080,
+        hot: true,
+        watchFiles: ["*"],
     },
 };
