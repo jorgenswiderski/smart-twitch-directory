@@ -1,0 +1,23 @@
+{
+    "manifest_version": 2,
+    "name": "Twitch Helper",
+    "version": "0.1.0",
+    "description": "Description of your extension",
+    "icons": {
+        "16": "images/icon-16.png",
+        "32": "images/icon-32.png",
+        "64": "images/icon-64.png"
+    },
+    "browser_action": {
+        "default_icon": "images/icon-64.png",
+        "default_title": "Your extension title",
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://*.twitch.tv/directory/following/live"],
+            "js": ["content.js"]
+        }
+    ],
+    "permissions": []
+}

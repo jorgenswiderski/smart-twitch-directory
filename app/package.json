@@ -1,0 +1,10 @@
+{
+    "name": "twitch-helper",
+    "id": "extensionname@example.org",
+    "title": "Twitch Helper",
+    "description": "Improved twitch following directory and go-live notifications.",
+    "author": "Jorgen Swiderski",
+    "license": "MPL 2.0",
+    "version": "0.1.0",
+    "main": "lib/main.js"
+}

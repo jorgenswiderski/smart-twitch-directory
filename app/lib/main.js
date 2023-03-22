@@ -1,0 +1,61 @@
+"use strict";
+
+/**
+ * Enable dubug mode
+ * This allow to console.log in a firefox default configuration
+ */
+require("sdk/preferences/service").set(
+    "extensions.sdk.console.logLevel",
+    "debug"
+);
+
+var data = require("sdk/self").data;
+var { ToggleButton } = require("sdk/ui/button/toggle");
+var { PageMod } = require("sdk/page-mod");
+var { Panel } = require("sdk/panel");
+
+var popup = Panel({
+    contentURL: data.url("popup.html"),
+    onHide: function () {
+        button.state("window", { checked: false });
+    },
+});
+
+// Show the popup when the user clicks the button.
+function handleClick(state) {
+    if (state.checked) {
+        popup.show({
+            position: button,
+            width: 600,
+            height: 400,
+        });
+    }
+}
+
+// Create a button
+var button = ToggleButton({
+    id: "show-popup",
+    label: "RSS Lector",
+    icon: {
+        16: "./images/icon-16.png",
+        32: "./images/icon-32.png",
+        64: "./images/icon-64.png",
+    },
+    onClick: handleClick,
+});
+
+// Create a content script
+var pageMod = PageMod({
+    include: ["*twitch.tv/directory/following/live"],
+    contentScriptFile: [data.url("content.js")],
+    contentStyleFile: [data.url("content.css")],
+});
+
+// Create a background script
+let bgPage;
+
+browser.runtime.onStartup.addListener(() => {
+    browser.runtime.getBackgroundPage().then((page) => {
+        bgPage = page;
+    });
+});
