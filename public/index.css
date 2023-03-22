@@ -1,8 +1,6 @@
-
-            body {
-                font: 20px Helvetica, sans-serif;
-                color: #333;
-            }
-            h1 {
-                font-size: 50px;
-            }
+body {
+    font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial,
+        sans-serif;
+    color: #efeff1;
+    background-color: #0e0e10;
+}

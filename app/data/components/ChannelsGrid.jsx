@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosJsonp from "axios-jsonp";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { ChannelCard } from "./ChannelCard";
 
@@ -43,7 +43,6 @@ const API_USER_TOKEN = "";
 
 export default function ChannelsGrid() {
     const [channels, setChannels] = useState([]);
-    // const [token, setToken] = useState();
     const [userId, setUserId] = useState();
 
     // function authenticate() {
@@ -62,22 +61,21 @@ export default function ChannelsGrid() {
     //         });
     // }
 
-    function fetchUserInfo() {
-        axios
-            .get("https://api.twitch.tv/helix/users", {
-                headers: {
-                    "Client-ID": API_CLIENT_ID,
-                    Authorization: "Bearer " + API_USER_TOKEN,
-                },
-            })
-            .then((response) => {
-                setUserId(response.data.data[0].id);
-            });
+    function fetchUserInfo(users = []) {
+        return axios.get("https://api.twitch.tv/helix/users", {
+            headers: {
+                "Client-ID": API_CLIENT_ID,
+                Authorization: "Bearer " + API_USER_TOKEN,
+            },
+            params: {
+                id: users,
+            },
+        });
     }
 
     function updateChannels(userId) {
         // Fetch the list of live channels from Twitch API
-        axios
+        return axios
             .get(
                 "https://api.twitch.tv/helix/streams/followed?user_id=" +
                     userId,
@@ -89,14 +87,7 @@ export default function ChannelsGrid() {
                 }
             )
             .then((response) => {
-                const channels = response.data.data.map((stream) => ({
-                    id: stream.id,
-                    name: stream.title,
-                    game: stream.game_name,
-                    viewers: stream.viewer_count,
-                    thumbnail: stream.thumbnail_url,
-                }));
-                setChannels(channels);
+                setChannels(response.data.data);
             })
             .catch((error) => {
                 console.error(error);
@@ -105,19 +96,48 @@ export default function ChannelsGrid() {
 
     useEffect(() => {
         if (!userId) {
-            fetchUserInfo();
+            fetchUserInfo().then((response) => {
+                setUserId(response.data.data[0].id);
+            });
             return;
         }
-
-        console.log("user id is " + userId);
 
         updateChannels(userId);
     }, [userId]);
 
+    const [avatars, setAvatars] = useState({});
+
+    useEffect(() => {
+        if (channels.length <= 0) {
+            return;
+        }
+
+        console.log(channels);
+
+        fetchUserInfo(channels.map((channel) => channel.user_id)).then(
+            (response) => {
+                const data = response.data.data;
+                const newAvatars = {};
+
+                data.forEach(({ id, profile_image_url }) => {
+                    newAvatars[id] = profile_image_url;
+                });
+
+                setAvatars(newAvatars);
+            }
+        );
+    }, [channels]);
+
+    const userState = useMemo(() => {
+        return channels.map((channel) => {
+            return { ...channel, avatar_url: avatars[channel.user_id] };
+        });
+    }, [channels, avatars]);
+
     return (
         <GridContainer>
-            {channels.map((channel) => (
-                <ChannelCard data={channel} key={channel.id} />
+            {userState.map((user) => (
+                <ChannelCard data={user} key={user.id} />
             ))}
         </GridContainer>
     );
