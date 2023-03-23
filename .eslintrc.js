@@ -18,5 +18,7 @@ module.exports = {
     plugins: ['react'],
     rules: {
         indent: ['error', 4],
+        'import/prefer-default-export': 'off',
+        'import/no-default-export': 'error',
     },
 };

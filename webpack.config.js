@@ -1,5 +1,10 @@
 const path = require('path');
 
+const webpack = require('webpack');
+
+// replace accordingly './.env' with the path of your .env file
+require('dotenv').config();
+
 module.exports = {
     mode: 'development',
     entry: {
@@ -21,6 +26,9 @@ module.exports = {
     },
     resolve: {
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        fallback: {
+
+        },
     },
     // other webpack configurations
     devServer: {
@@ -28,4 +36,9 @@ module.exports = {
         hot: true,
         watchFiles: ['*'],
     },
+    plugins: [
+        new webpack.DefinePlugin({
+            'process.env': JSON.stringify(process.env),
+        }),
+    ],
 };

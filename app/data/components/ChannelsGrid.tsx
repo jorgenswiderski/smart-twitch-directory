@@ -3,14 +3,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { InfinitySpin, TailSpin } from 'react-loader-spinner';
 import { ChannelCard } from './ChannelCard';
+import { CONFIG } from '../models/config';
 
 const GridContainer = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     grid-gap: 20px;
 `;
-
-// FIXME NOW
 
 export default function ChannelsGrid() {
   const [channels, setChannels] = useState([]);
@@ -20,7 +19,7 @@ export default function ChannelsGrid() {
   // function authenticate() {
   //     axios
   //         .post("https://id.twitch.tv/oauth2/token", {
-  //             client_id: API_CLIENT_ID,
+  //             client_id: CONFIG.API.HELIX.CLIENT_ID,
   //             client_secret: API_SECRET,
   //             grant_type: "client_credentials",
   //         })
@@ -36,8 +35,8 @@ export default function ChannelsGrid() {
   function fetchUserInfo(users = []) {
     return axios.get('https://api.twitch.tv/helix/users', {
       headers: {
-        'Client-ID': API_CLIENT_ID,
-        Authorization: `Bearer ${API_USER_TOKEN}`,
+        'Client-ID': CONFIG.API.HELIX.CLIENT_ID,
+        Authorization: `Bearer ${CONFIG.API.HELIX.USER_TOKEN}`,
       },
       params: {
         id: users,
@@ -53,8 +52,8 @@ export default function ChannelsGrid() {
           userId}`,
         {
           headers: {
-            'Client-ID': API_CLIENT_ID,
-            Authorization: `Bearer ${API_USER_TOKEN}`,
+            'Client-ID': CONFIG.API.HELIX.CLIENT_ID,
+            Authorization: `Bearer ${CONFIG.API.HELIX.USER_TOKEN}`,
           },
         },
       )
