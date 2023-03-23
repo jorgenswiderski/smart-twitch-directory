@@ -1,6 +1,6 @@
 /**
- * Enable dubug mode
- * This allow to console.log in a firefox default configuration
+ * Enable debug mode
+ * This allows console.log in a firefox default configuration
  */
 require('sdk/preferences/service').set(
     'extensions.sdk.console.logLevel',
@@ -11,6 +11,8 @@ const { data } = require('sdk/self');
 const { ToggleButton } = require('sdk/ui/button/toggle');
 const { PageMod } = require('sdk/page-mod');
 const { Panel } = require('sdk/panel');
+
+let button;
 
 const popup = Panel({
     contentURL: data.url('popup.html'),
@@ -31,7 +33,7 @@ function handleClick(state) {
 }
 
 // Create a button
-var button = ToggleButton({
+button = ToggleButton({
     id: 'show-popup',
     label: 'RSS Lector',
     icon: {
@@ -43,7 +45,7 @@ var button = ToggleButton({
 });
 
 // Create a content script
-const pageMod = PageMod({
+/* const pageMod = */ PageMod({
     include: ['*twitch.tv/directory/following/live'],
     contentScriptFile: [data.url('content.js')],
     contentStyleFile: [data.url('content.css')],

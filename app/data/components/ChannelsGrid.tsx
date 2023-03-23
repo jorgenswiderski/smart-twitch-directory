@@ -121,7 +121,7 @@ export default function ChannelsGrid() {
     <GridContainer>
       {isLoaded ? (
         userState.map((user) => (
-          <ChannelCard data={user} />
+          <ChannelCard data={user} key={user.id as String} />
         ))
       ) : (
         <TailSpin color="#a970ff" />

@@ -30,9 +30,9 @@ function Thumbnail({ data, width = 320, height = 180 }) {
   );
 }
 
-export function ChannelCard({ data }) {
+export function ChannelCard({ data, key }) {
   return (
-    <ChannelContainer key={data.id}>
+    <ChannelContainer>
       <Thumbnail data={data} />
       <Details>
         <a href={`https://twitch.tv/${data.user_name}/videos`}>
