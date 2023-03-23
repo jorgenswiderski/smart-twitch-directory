@@ -1,7 +1,7 @@
 // content.jsx
 import React from 'react';
 import ReactDOM from 'react-dom';
-import ChannelsGrid from '../components/channels-grid';
+import { ChannelsGrid } from '../components/channels-grid';
 
 console.log('Loading extension...');
 console.log('Loading grid...');

@@ -82,8 +82,6 @@ const ThumbnailContainer = styled.div`
 
 const ChannelImage = styled.img`
     width: 100%;
-    height: 150px;
-    object-fit: cover;
 `;
 
 const LiveIndicator = styled.div`
