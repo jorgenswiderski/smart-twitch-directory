@@ -16,7 +16,7 @@ function Thumbnail({ data, width = 320, height = 180 }) {
   }, [data.viewer_count]);
 
   return (
-    <a href={`https://twitch.tv/${data.user_name}`}>
+    <a href={`https://twitch.tv/${data.user_login}`}>
       <ThumbnailContainer>
         <ChannelImage src={url} alt={data.title} />
         <LiveIndicator>LIVE</LiveIndicator>
@@ -35,7 +35,7 @@ export function ChannelCard({ data, key }) {
     <ChannelContainer>
       <Thumbnail data={data} />
       <Details>
-        <a href={`https://twitch.tv/${data.user_name}/videos`}>
+        <a href={`https://twitch.tv/${data.user_login}/videos`}>
           <Avatar
             src={data.avatar_url}
             alt={`${data.user_name}'s avatar`}
@@ -43,12 +43,12 @@ export function ChannelCard({ data, key }) {
         </a>
         <Info>
           <a
-            href={`https://twitch.tv/${data.user_name}`}
+            href={`https://twitch.tv/${data.user_login}`}
             title={data.title}
           >
             <TitleText>{data.title}</TitleText>
           </a>
-          <a href={`https://twitch.tv/${data.user_name}`}>
+          <a href={`https://twitch.tv/${data.user_login}`}>
             <NameText>{data.user_name}</NameText>
           </a>
           <a

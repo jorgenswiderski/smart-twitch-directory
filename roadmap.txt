@@ -1,0 +1,19 @@
+Implement a "recommended" stream heuristic. Some ideas for data points include:
+ - Higher score for subbed channels
+     - Maybe slightly less for gifted?
+ - Log directory clickthroughs and increase the favorability for the clicked stream relative to other live streams
+ - Track user watch time, and increase the favorability for the watched stream relative to other live streams
+ - Track each stream by category, and recommend based on the stream's current category if there's sufficient data
+ - Track how often the user is in the stream while its offline
+     - Need to avoid giving too much weight if the user is afk or just didn't close the tab or something
+     - Consider chat participation?
+
+Implement go-live notifications:
+ - Notify for all streams that score above some threshold on the heuristic
+ - Allow the user to manually enroll in notifications on a stream to stream basis, and always notify for that stream regardless of score
+ - Score bonus when the user clickthroughs on the notification?
+     - Small penalty if they don't?
+
+Directory UI polish
+
+Settings

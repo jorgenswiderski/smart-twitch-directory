@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { InfinitySpin, TailSpin } from 'react-loader-spinner';
-import { ChannelCard } from './ChannelCard';
+import { ChannelCard } from './channel-card';
 import { CONFIG } from '../models/config';
 
 const GridContainer = styled.div`

@@ -8,8 +8,7 @@ require('dotenv').config();
 module.exports = {
     mode: 'development',
     entry: {
-        content: './app/data/content.tsx',
-        background: './app/data/background.ts',
+        content: './app/data/content/directory.tsx',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
