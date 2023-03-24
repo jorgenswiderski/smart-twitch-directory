@@ -21,26 +21,30 @@ MessageService.listen(MessageType.STOP_WATCHING, ({ data: { userId } }) => {
     delete watched[userId];
 });
 
+function saveFrame(userId) {
+    if (Object.keys(watched).length <= 0) {
+        return;
+    }
+
+    HelixApi.getStreamsFollowed(userId).then((response) => {
+        if (response) {
+            const entry: WatchData = {
+                time: Date.now(),
+                watched,
+                followedStreams: response.data.data,
+            };
+
+            console.log("Added new entry:");
+            console.log(entry);
+
+            history.push(entry);
+        }
+    });
+}
+
 function startTracking(userId: string) {
     setInterval(() => {
-        if (Object.keys(watched).length <= 0) {
-            return;
-        }
-
-        HelixApi.getStreamsFollowed(userId).then((response) => {
-            if (response) {
-                const entry: WatchData = {
-                    time: Date.now(),
-                    watched,
-                    followedStreams: response.data.data,
-                };
-
-                console.log("Added new entry:");
-                console.log(entry);
-
-                history.push(entry);
-            }
-        });
+        saveFrame(userId);
     }, 180000);
 }
 
