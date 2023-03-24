@@ -19,7 +19,7 @@ module.exports = {
     rules: {
         indent: ['error', 4],
         'import/prefer-default-export': 'off',
-        'import/no-default-export': 'error'
+        'import/no-default-export': 'error',
     },
     settings: {
         "import/parsers": {

@@ -1,9 +1,8 @@
-// content.jsx
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { ChannelsGrid } from '../components/channels-grid';
 
-console.log('Loading extension...');
+console.log('Loading directory.tsx...');
 console.log('Loading grid...');
 
 // Append the new instance to the page

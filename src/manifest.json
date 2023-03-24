@@ -1,0 +1,27 @@
+{
+    "manifest_version": 2,
+    "name": "Twitch Helper",
+    "description": "Find the content you want to watch on twitch!",
+    "version": "0.0.1",
+    "icons": {
+        "16": "images/icon-16.png",
+        "32": "images/icon-32.png",
+        "64": "images/icon-64.png"
+    },
+    "browser_action": {
+        "default_icon": "images/icon-64.png",
+        "default_title": "Twitch Helper",
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://*.twitch.tv/directory/following/live"],
+            "js": ["directory.js"]
+        },
+        {
+            "matches": ["*://*.twitch.tv/*"],
+            "js": ["track-watch.js"]
+        }
+    ],
+    "permissions": ["https://*.twitch.tv/*"]
+}

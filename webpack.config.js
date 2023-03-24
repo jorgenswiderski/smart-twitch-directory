@@ -1,6 +1,8 @@
 const path = require('path');
-
+const TransformJson = require('transform-json-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
+const packageInfo = require('./package.json')
 
 // replace accordingly './.env' with the path of your .env file
 require('dotenv').config();
@@ -8,7 +10,8 @@ require('dotenv').config();
 module.exports = {
     mode: 'development',
     entry: {
-        content: './app/data/content/directory.tsx',
+        directory: './src/content/directory.tsx',
+        "track-watch": './src/content/track-watch.ts',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -17,9 +20,20 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.(ts|tsx)$/,
+                test: /\.tsx?$/,
                 use: 'ts-loader',
                 exclude: /node_modules/,
+            },
+            {
+                test: /\.jsx?$/,
+                exclude: path.resolve(__dirname, 'src'),
+                enforce: 'pre',
+                use: 'source-map-loader'
+            },
+            {
+                test: /\.jsx?$/,
+                exclude: /node_modules/,
+                use: 'babel-loader'
             },
         ],
     },
@@ -29,8 +43,8 @@ module.exports = {
 
         },
     },
-    // other webpack configurations
     devServer: {
+        static: './dist',
         port: 8080,
         hot: true,
         watchFiles: ['*'],
@@ -39,5 +53,24 @@ module.exports = {
         new webpack.DefinePlugin({
             'process.env': JSON.stringify(process.env),
         }),
+        new TransformJson({
+            source: path.resolve(__dirname, 'src', 'manifest.json'),
+            filename: 'manifest.json',
+            object: {
+                description: packageInfo.description,
+                version: packageInfo.version
+            }
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {from: 'src/static', to: './',},
+                {from: 'src/images', to: './images',},
+            ]
+        }),
     ],
+    // For when 1 HTML page can have multiple entry points
+    // optimization: {
+    //     runtimeChunk: 'single',
+    // }
+    devtool: 'source-map'
 };

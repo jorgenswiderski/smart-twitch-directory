@@ -24,9 +24,6 @@ const API = {
     },
 };
 
-console.log("HELIX CONFIG:");
-console.log(API.HELIX);
-
 export const CONFIG = {
     API,
 };
