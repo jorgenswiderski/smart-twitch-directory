@@ -1,9 +1,7 @@
-import axios from "axios";
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
-import { CONFIG } from "../models/config";
 import { HelixApi } from "../api/helix";
 
 const GridContainer = styled.div`

@@ -1,17 +1,9 @@
-import browser from "webextension-polyfill";
 import { HelixApi } from "../api/helix";
 import { MessageService, MessageType } from "../models/messaging";
+import { ActiveWatch } from "../models/watch-data/types";
+import { WatchDataService, WatchSample } from "../models/watch-data/watch-data";
 
-type WatchObj = { [key: string]: true };
-
-interface WatchData {
-    time: Number;
-    watched: WatchObj;
-    followedStreams: Object;
-}
-
-const watched: WatchObj = {};
-let history: WatchData[];
+const watched: ActiveWatch = {};
 
 MessageService.listen(MessageType.START_WATCHING, ({ data: { userId } }) => {
     watched[userId] = true;
@@ -20,10 +12,6 @@ MessageService.listen(MessageType.START_WATCHING, ({ data: { userId } }) => {
 MessageService.listen(MessageType.STOP_WATCHING, ({ data: { userId } }) => {
     delete watched[userId];
 });
-
-async function saveData() {
-    await browser.storage.local.set({ watchData: history });
-}
 
 async function saveFrame(userId) {
     try {
@@ -37,17 +25,7 @@ async function saveFrame(userId) {
             return;
         }
 
-        const entry: WatchData = {
-            time: Date.now(),
-            watched,
-            followedStreams: response.data.data,
-        };
-
-        console.log("Added new entry:");
-        console.log(entry);
-
-        history.push(entry);
-        await saveData();
+        WatchDataService.addEntry(watched, response.data.data);
     } catch (err) {
         console.error(err);
     }
@@ -59,16 +37,6 @@ function startTracking(userId: string) {
     }, 180000);
 }
 
-async function loadSavedData() {
-    const data = await browser.storage.local.get("watchData");
-
-    history = data.watchData || [];
-
-    console.log(
-        `Loaded ${(data.watchData || []).length} entries from local storage.`
-    );
-}
-
 async function getUserId() {
     const response = await HelixApi.getUsers();
 
@@ -78,15 +46,8 @@ async function getUserId() {
 }
 
 async function init() {
-    const userId = getUserId();
-    const loading = loadSavedData();
-
-    try {
-        await Promise.all([userId, loading]);
-        startTracking(await userId);
-    } catch (err) {
-        console.error(err);
-    }
+    const userId = await getUserId();
+    startTracking(userId);
 }
 
 init().catch((err) => {
