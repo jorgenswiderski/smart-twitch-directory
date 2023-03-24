@@ -12,6 +12,7 @@ module.exports = {
     entry: {
         directory: './src/content/directory.tsx',
         "track-watch": './src/content/track-watch.ts',
+        background: './src/background/background.ts'
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

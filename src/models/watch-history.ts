@@ -1,4 +1,6 @@
 import moment, { Moment } from "moment";
+import browser from "webextension-polyfill";
+import { MessageService, MessageType } from "./messaging";
 
 interface WatchEvent {
     type: "start" | "stop";
@@ -23,6 +25,10 @@ class WatchHistory {
         });
 
         console.log(`Now watching ${userId}`);
+
+        MessageService.send(MessageType.START_WATCHING, {
+            userId,
+        });
     }
 
     stopWatching(userId) {
@@ -32,6 +38,10 @@ class WatchHistory {
         });
 
         console.log(`No longer watching ${userId}`);
+
+        MessageService.send(MessageType.STOP_WATCHING, {
+            userId,
+        });
     }
 }
 

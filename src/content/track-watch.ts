@@ -5,11 +5,11 @@ function isStreamPlaying() {
     const video = document.querySelector("video"); // get the video element
 
     if (video && !video.paused) {
-        console.log("Stream is playing!");
+        // console.log("Stream is playing!");
         return true;
     }
 
-    console.log("Stream is paused or not yet started.");
+    // console.log("Stream is paused or not yet started.");
     return false;
 }
 
