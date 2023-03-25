@@ -1,7 +1,7 @@
 import { HelixApi } from "../api/helix";
 import { MessageService, MessageType } from "../models/messaging";
 import { ActiveWatch } from "../models/watch-data/types";
-import { WatchDataService, WatchSample } from "../models/watch-data/watch-data";
+import { WatchDataService } from "../models/watch-data/watch-data";
 
 const watched: ActiveWatch = {};
 

@@ -3,6 +3,7 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
+import { scoreStreams } from "../models/smooth-brain/smooth-brain";
 
 const GridContainer = styled.div`
     display: grid;
@@ -15,10 +16,18 @@ export function ChannelsGrid() {
     const [userId, setUserId] = useState();
     const [isLoaded, setIsLoaded] = useState(false);
 
+    function sortChannels(channelData: any[]) {
+        const scores = scoreStreams();
+
+        channelData.sort((a, b) => scores[b.user_id] - scores[a.user_id]);
+
+        return channelData;
+    }
+
     function updateChannels(id: string) {
         HelixApi.getStreamsFollowed(id).then((response) => {
             if (response) {
-                setChannels(response.data.data);
+                setChannels(sortChannels(response.data.data));
             }
         });
     }
