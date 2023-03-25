@@ -1,5 +1,5 @@
-import { ActiveWatch } from "../watch-data/types";
-import { WatchDataService, WatchSample } from "../watch-data/watch-data";
+import { ActiveWatch } from "../../watch-data/types";
+import { WatchDataService } from "../../watch-data/watch-data";
 
 export interface StreamSageTrainingData {
     inputs: StreamSageStream[][];

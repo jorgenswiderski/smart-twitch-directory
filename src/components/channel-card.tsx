@@ -25,7 +25,7 @@ function Thumbnail({ data, width = 320, height = 180 }) {
           {' '}
           viewers
         </ViewerText>
-        <ScoreText>{data.score.toFixed(0)}</ScoreText>
+        <ScoreText>{`${(data.score * 100).toFixed(0)}%`}</ScoreText>
       </ThumbnailContainer>
     </a>
   );

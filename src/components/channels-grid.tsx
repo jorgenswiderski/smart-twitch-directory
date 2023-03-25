@@ -3,7 +3,7 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { scoreStreams } from "../models/smooth-brain/smooth-brain";
+import { scoreStreams } from "../models/heuristics/totem-pole";
 
 const GridContainer = styled.div`
     display: grid;
@@ -26,8 +26,8 @@ export function ChannelsGrid() {
     }
 
     function sortChannels(channelData: any[]) {
-        const positiveChannels = channelData.filter((stream) => stream.score >= 0);
-        const negativeChannels = channelData.filter((stream) => stream.score < 0);
+        const positiveChannels = channelData.filter((stream) => stream.score > 0);
+        const negativeChannels = channelData.filter((stream) => stream.score <= 0);
 
         positiveChannels.sort((a, b) => b.score - a.score);
         negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
