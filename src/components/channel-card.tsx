@@ -120,13 +120,13 @@ const Details = styled.div`
     display: flex;
     padding: 10px;
     align-items: center;
+    gap: 10px;
 `;
 
 const Avatar = styled.img`
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    margin-right: 10px;
     overflow: hidden;
 `;
 
@@ -135,12 +135,12 @@ const Info = styled.div`
     gap: 3px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 `;
 
 const InfoText = styled.div`
     font-size: 13px;
     text-overflow: ellipsis;
-    overflow: hidden;
     white-space: nowrap;
     color: rgb(173, 173, 184);
 `;
