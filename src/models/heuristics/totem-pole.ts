@@ -1,3 +1,4 @@
+import { CONSTANTS } from "../constants";
 import { WatchDataService } from "../watch-data/watch-data";
 
 function calcDecayFactor(time) {
@@ -8,27 +9,47 @@ function calcDecayFactor(time) {
     return 0.97 ** ageInDays;
 }
 
-export function scoreStreams() {
+function initScore(scores, stream) {
+    scores[stream.user_id] = scores[stream.user_id] || {
+        num: 0,
+        div: 0,
+    };
+
+    return scores[stream.user_id];
+}
+
+export function scoreStreams(categories?: { [key: string]: string }) {
+    // console.log(categories);
+
     const { data } = WatchDataService;
-    const scores: { [key: string]: { num: number; div: number } } = {};
+    const scores: {
+        [key: string]: {
+            num: number;
+            div: number;
+        };
+    } = {};
 
     data.forEach(({ watched, followedStreams: streams, time }) => {
         const decayFactor = calcDecayFactor(time);
 
         streams.forEach((stream) => {
-            scores[stream.user_id] = scores[stream.user_id] || {
-                num: 0,
-                div: 0,
-            };
+            const score = initScore(scores, stream);
+            const categoryMultiplier =
+                categories && categories[stream.user_id] === stream.game_id
+                    ? CONSTANTS.HEURISTICS.TOTEM_POLE.CATEGORY_WEIGHT
+                    : 1;
+
+            // console.log(categoryMultiplier);
 
             if (watched[stream.user_id]) {
-                scores[stream.user_id].num +=
+                score.num +=
                     (streams.length - (Object.keys(watched).length + 1) / 2) *
-                    decayFactor;
-                scores[stream.user_id].div +=
-                    (streams.length - 1) * decayFactor;
+                    decayFactor *
+                    categoryMultiplier;
+                score.div +=
+                    (streams.length - 1) * decayFactor * categoryMultiplier;
             } else {
-                scores[stream.user_id].div += 1 * decayFactor;
+                score.div += 1 * decayFactor;
             }
         });
     });

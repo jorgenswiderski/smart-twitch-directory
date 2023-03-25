@@ -17,7 +17,13 @@ export function ChannelsGrid() {
     const [isLoaded, setIsLoaded] = useState(false);
 
     function injectScores(channelData: any[]) {
-        const scores = scoreStreams();
+        const categoryMap = {};
+
+        channelData.forEach(({user_id, game_id}) => {
+            categoryMap[user_id] = game_id;
+        });
+
+        const scores = scoreStreams(categoryMap);
 
         return channelData.map((channel) => ({
             ...channel,
