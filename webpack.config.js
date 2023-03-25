@@ -14,7 +14,7 @@ module.exports = {
         "track-watch": './src/content/track-watch.ts',
         background: './src/background/background.ts',
         // 'stream-sage': './src/models/stream-sage/stream-sage.ts'
-        'smooth-brain': './src/models/smooth-brain/smooth-brain.ts'
+        // 'smooth-brain': './src/models/smooth-brain/smooth-brain.ts'
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

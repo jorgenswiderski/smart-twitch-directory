@@ -48,6 +48,12 @@ class WatchData {
 
     constructor() {
         this.loadData();
+
+        browser.storage.local.onChanged.addListener((changes) => {
+            if (changes.watchData?.newValue) {
+                this.data = changes.watchData.newValue;
+            }
+        });
     }
 
     addEntry(watched: ActiveWatch, followedStreams: Stream[]) {
@@ -75,7 +81,7 @@ class WatchData {
                 `Loaded ${this.data.length} entries from local storage.`
             );
 
-            console.log(this.data);
+            // console.log(this.data);
         } catch (err) {
             console.error(err);
         }

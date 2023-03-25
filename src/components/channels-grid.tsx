@@ -16,13 +16,20 @@ export function ChannelsGrid() {
     const [userId, setUserId] = useState();
     const [isLoaded, setIsLoaded] = useState(false);
 
-    function sortChannels(channelData: any[]) {
+    function injectScores(channelData: any[]) {
         const scores = scoreStreams();
 
-        const positiveChannels = channelData.filter((stream) => scores[stream.user_id] >= 0);
-        const negativeChannels = channelData.filter((stream) => scores[stream.user_id] < 0);
+        return channelData.map((channel) => ({
+            ...channel,
+            score: scores[channel.user_id] || 0,
+        }))
+    }
 
-        positiveChannels.sort((a, b) => scores[b.user_id] - scores[a.user_id]);
+    function sortChannels(channelData: any[]) {
+        const positiveChannels = channelData.filter((stream) => stream.score >= 0);
+        const negativeChannels = channelData.filter((stream) => stream.score < 0);
+
+        positiveChannels.sort((a, b) => b.score - a.score);
         negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
 
         return positiveChannels.concat(negativeChannels);
@@ -31,7 +38,7 @@ export function ChannelsGrid() {
     function updateChannels(id: string) {
         HelixApi.getStreamsFollowed(id).then((response) => {
             if (response) {
-                setChannels(sortChannels(response.data.data));
+                setChannels(sortChannels(injectScores(response.data.data)));
             }
         });
     }

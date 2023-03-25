@@ -5,10 +5,11 @@ export function scoreStreams() {
     const scores = {};
 
     data.forEach((sample) => {
-        const totalPoints = sample.followedStreams.length;
+        const count = sample.followedStreams.length;
+        const totalPoints = count ** (2 / 3);
         const shareUp = totalPoints / Object.keys(sample.watched).length;
         const shareDown =
-            totalPoints / (totalPoints - Object.keys(sample.watched).length);
+            totalPoints / (count - Object.keys(sample.watched).length);
 
         sample.followedStreams.forEach((stream) => {
             scores[stream.user_id] = scores[stream.user_id] || 0;

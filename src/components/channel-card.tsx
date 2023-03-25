@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import styled from 'styled-components';
 
 function Thumbnail({ data, width = 320, height = 180 }) {
@@ -25,6 +25,7 @@ function Thumbnail({ data, width = 320, height = 180 }) {
           {' '}
           viewers
         </ViewerText>
+        <ScoreText>{data.score.toFixed(0)}</ScoreText>
       </ThumbnailContainer>
     </a>
   );
@@ -106,6 +107,13 @@ const ViewerText = styled.div`
     background-color: #0007;
     padding: 0px 5px;
     border-radius: 3px;
+`;
+
+const ScoreText = styled(ViewerText)`
+    bottom: unset;
+    left: unset;
+    top: 10px;
+    right: 10px;
 `;
 
 const Details = styled.div`

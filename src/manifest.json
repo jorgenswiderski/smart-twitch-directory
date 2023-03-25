@@ -14,7 +14,7 @@
         "default_popup": "popup.html"
     },
     "background": {
-        "scripts": ["background.js", "smooth-brain.js"]
+        "scripts": ["background.js"]
     },
     "content_scripts": [
         {
