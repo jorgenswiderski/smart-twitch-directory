@@ -5,8 +5,31 @@ import { ChannelsGrid } from '../components/channels-grid';
 console.log('Loading directory.tsx...');
 console.log('Loading grid...');
 
-// Append the new instance to the page
-const container = document.createElement('div');
-document.body.insertBefore(container, document.body.firstChild);
+function injectChannelsGrid(header) {
+    const liveChannelsContent = header.nextElementSibling;
 
-ReactDOM.render(<ChannelsGrid />, container);
+    // Append the new instance to the page
+    const container = document.createElement('div');
+    liveChannelsContent.insertAdjacentElement('afterend', container);
+    ReactDOM.render(<ChannelsGrid />, container);
+
+    // Hide the original content
+    liveChannelsContent.style.display = "none";
+}
+
+// Use MutationObserver to wait for the liveChannelsHeader element to be added to the DOM
+const observer = new MutationObserver((mutationsList) => {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'childList') {
+        const liveChannelsHeader = document.querySelector('header[aria-label="Live channels"]');
+        if (liveChannelsHeader) {
+          observer.disconnect(); // stop observing changes
+          injectChannelsGrid(liveChannelsHeader);
+          break;
+        }
+      }
+    }
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
