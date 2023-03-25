@@ -26,5 +26,5 @@
             "js": ["track-watch.js"]
         }
     ],
-    "permissions": ["https://*.twitch.tv/*", "storage"]
+    "permissions": ["https://*.twitch.tv/*", "storage", "unlimitedStorage"]
 }

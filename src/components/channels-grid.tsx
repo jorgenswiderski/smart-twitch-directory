@@ -19,9 +19,13 @@ export function ChannelsGrid() {
     function sortChannels(channelData: any[]) {
         const scores = scoreStreams();
 
-        channelData.sort((a, b) => scores[b.user_id] - scores[a.user_id]);
+        const positiveChannels = channelData.filter((stream) => scores[stream.user_id] >= 0);
+        const negativeChannels = channelData.filter((stream) => scores[stream.user_id] < 0);
 
-        return channelData;
+        positiveChannels.sort((a, b) => scores[b.user_id] - scores[a.user_id]);
+        negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
+
+        return positiveChannels.concat(negativeChannels);
     }
 
     function updateChannels(id: string) {
