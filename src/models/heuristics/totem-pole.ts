@@ -39,16 +39,15 @@ export function scoreStreams(categories?: { [key: string]: string }) {
                     ? CONSTANTS.HEURISTICS.TOTEM_POLE.CATEGORY_WEIGHT
                     : 1;
 
+            const basePoints = streams.length;
             const multiplier = decayFactor * categoryMultiplier;
+            const points = basePoints + multiplier;
 
             if (watched[stream.user_id]) {
-                score.num +=
-                    (streams.length - (Object.keys(watched).length + 1) / 2) *
-                    multiplier;
-                score.div += (streams.length - 1) * multiplier;
-            } else {
-                score.div += 1 * multiplier;
+                score.num += points;
             }
+
+            score.div += points;
         });
     });
 
