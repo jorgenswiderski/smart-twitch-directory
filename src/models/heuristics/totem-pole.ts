@@ -41,7 +41,7 @@ export function scoreStreams(categories?: { [key: string]: string }) {
 
             const basePoints = streams.length;
             const multiplier = decayFactor * categoryMultiplier;
-            const points = basePoints + multiplier;
+            const points = basePoints * multiplier;
 
             if (watched[stream.user_id]) {
                 score.num += points;
