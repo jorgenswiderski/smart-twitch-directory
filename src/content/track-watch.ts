@@ -2,6 +2,16 @@ import { HelixApi } from "../api/helix";
 import { CONSTANTS } from "../models/constants";
 import { MessageService, MessageType } from "../models/messaging";
 
+function isStream() {
+    return /^https:\/\/www\.twitch\.tv\/\w+[^/]*$/.test(window.location.href);
+}
+
+function getStreamName() {
+    return /^https:\/\/www\.twitch\.tv\/(\w+)[^/]*$/.exec(
+        window.location.href
+    )[1];
+}
+
 function isStreamPlaying() {
     const video = document.querySelector("video"); // get the video element
 
@@ -14,39 +24,65 @@ function isStreamPlaying() {
     return false;
 }
 
-function startTracking(channelName: string, userId: string) {
-    console.log(`Now tracking ${channelName} with userId=${userId}.`);
+async function getUserIdFromUserName(userName): Promise<void | string> {
+    const response = await HelixApi.getStreams({ userLogin: [userName] });
 
-    setInterval(() => {
-        const isPlaying = isStreamPlaying();
+    if (!response) {
+        return;
+    }
 
-        if (isPlaying) {
-            MessageService.send(MessageType.WATCHING_PULSE, {
-                userId,
-            });
-        }
-    }, CONSTANTS.TRACKER.HEARTBEAT_INTERVAL);
+    // eslint-disable-next-line consistent-return
+    return response.data.data[0].user_id;
 }
 
-function init(channelName: string) {
-    HelixApi.getStreams({ userLogin: [channelName] }).then((response) => {
-        if (!response) {
+let interval;
+
+function stopTracking() {
+    console.log("Stopped tracking.");
+    clearInterval(interval);
+    interval = undefined;
+}
+
+async function startTracking(channelName: string) {
+    try {
+        const userId = await getUserIdFromUserName(channelName);
+
+        if (!userId) {
             return;
         }
 
-        const userId = response.data.data[0].user_id;
-        startTracking(channelName, userId);
-    });
+        console.log(`Now tracking ${channelName} with userId=${userId}.`);
+
+        if (interval) {
+            clearInterval(interval);
+        }
+
+        interval = setInterval(() => {
+            if (!isStream()) {
+                stopTracking();
+                return;
+            }
+
+            if (getStreamName() !== channelName) {
+                startTracking(getStreamName());
+                return;
+            }
+
+            const isPlaying = isStreamPlaying();
+
+            if (isPlaying) {
+                MessageService.send(MessageType.WATCHING_PULSE, {
+                    userId,
+                });
+            }
+        }, CONSTANTS.TRACKER.HEARTBEAT_INTERVAL);
+    } catch (err) {
+        console.error(err);
+    }
 }
 
-console.log("Loading track-watch.ts...");
+// console.log("track-watch.ts");
 
-// const location = window.location.href;
-
-if (/^https:\/\/www\.twitch\.tv\/\w+[^/]*$/.test(window.location.href)) {
-    const channelName = /^https:\/\/www\.twitch\.tv\/(\w+)[^/]*$/.exec(
-        window.location.href
-    )[1];
-
-    init(channelName);
+if (isStream()) {
+    startTracking(getStreamName());
 }

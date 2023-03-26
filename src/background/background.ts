@@ -28,8 +28,6 @@ async function saveFrame(userId) {
     try {
         const watched = getActiveWatch();
 
-        console.log(watchHeartbeats, watched);
-
         if (Object.keys(watched).length <= 0) {
             return;
         }
