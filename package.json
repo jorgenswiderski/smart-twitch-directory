@@ -1,6 +1,6 @@
 {
-    "name": "twitch-helper",
-    "version": "0.0.1",
+    "name": "smart-twitch-directory",
+    "version": "0.1.0",
     "description": "Find the content you want to watch on twitch!",
     "dependencies": {
         "@tensorflow/tfjs": "^4.2.0",
@@ -45,7 +45,7 @@
         "watch": "webpack --watch --progress --config webpack.config.js",
         "start": "web-ext run --source-dir dist --firefox deved",
         "start-chrome": "web-ext run --source-dir dist --target chromium",
-        "build": "webpack --mode production",
+        "build": "webpack --mode production && web-ext build --source-dir dist --overwrite-dest",
         "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
         "lint-fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
         "server-start": "webpack-dev-server --mode development --open"

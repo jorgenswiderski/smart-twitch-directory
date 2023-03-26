@@ -1,6 +1,6 @@
 {
     "manifest_version": 2,
-    "name": "Twitch Helper",
+    "name": "Smart Twitch Directory & Notifications",
     "description": "Find the content you want to watch on twitch!",
     "version": "0.0.1",
     "icons": {
@@ -10,7 +10,7 @@
     },
     "browser_action": {
         "default_icon": "images/icon-64.png",
-        "default_title": "Twitch Helper",
+        "default_title": "Smart Twitch Directory & Notifications",
         "default_popup": "popup.html"
     },
     "background": {
@@ -26,5 +26,10 @@
             "js": ["track-watch.js"]
         }
     ],
-    "permissions": ["https://*.twitch.tv/*", "storage", "unlimitedStorage"]
+    "permissions": ["https://*.twitch.tv/*", "storage", "unlimitedStorage"],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "jorgen.swiderski@gmail.com"
+        }
+    }
 }
