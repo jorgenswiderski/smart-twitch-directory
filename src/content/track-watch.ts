@@ -1,5 +1,6 @@
 import { HelixApi } from "../api/helix";
-import { WatchHistoryService } from "../models/watch-history";
+import { CONSTANTS } from "../models/constants";
+import { MessageService, MessageType } from "../models/messaging";
 
 function isStreamPlaying() {
     const video = document.querySelector("video"); // get the video element
@@ -16,25 +17,15 @@ function isStreamPlaying() {
 function startTracking(channelName: string, userId: string) {
     console.log(`Now tracking ${channelName} with userId=${userId}.`);
 
-    let status = isStreamPlaying();
-
-    if (status) {
-        WatchHistoryService.startWatching(userId);
-    }
-
     setInterval(() => {
-        const newStatus = isStreamPlaying();
+        const isPlaying = isStreamPlaying();
 
-        if (status !== newStatus) {
-            if (newStatus) {
-                WatchHistoryService.startWatching(userId);
-            } else {
-                WatchHistoryService.stopWatching(userId);
-            }
-
-            status = newStatus;
+        if (isPlaying) {
+            MessageService.send(MessageType.WATCHING_PULSE, {
+                userId,
+            });
         }
-    }, 5000);
+    }, CONSTANTS.TRACKER.HEARTBEAT_INTERVAL);
 }
 
 function init(channelName: string) {

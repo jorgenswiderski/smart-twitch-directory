@@ -4,4 +4,12 @@ const HEURISTICS = {
     },
 };
 
-export const CONSTANTS = { HEURISTICS };
+const AGGREGATOR = {
+    SAMPLE_INTERVAL: 180000,
+};
+
+const TRACKER = {
+    HEARTBEAT_INTERVAL: 30000,
+};
+
+export const CONSTANTS = { HEURISTICS, AGGREGATOR, TRACKER };

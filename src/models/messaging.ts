@@ -1,8 +1,7 @@
 import browser from "webextension-polyfill";
 
 export enum MessageType {
-    START_WATCHING,
-    STOP_WATCHING,
+    WATCHING_PULSE,
 }
 
 export class MessageService {

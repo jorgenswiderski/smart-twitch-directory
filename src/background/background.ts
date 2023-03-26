@@ -1,20 +1,35 @@
 import { HelixApi } from "../api/helix";
+import { CONSTANTS } from "../models/constants";
 import { MessageService, MessageType } from "../models/messaging";
 import { ActiveWatch } from "../models/watch-data/types";
 import { WatchDataService } from "../models/watch-data/watch-data";
 
-const watched: ActiveWatch = {};
+const watchHeartbeats: { [key: string]: number } = {};
 
-MessageService.listen(MessageType.START_WATCHING, ({ data: { userId } }) => {
-    watched[userId] = true;
+MessageService.listen(MessageType.WATCHING_PULSE, ({ data: { userId } }) => {
+    watchHeartbeats[userId] = Date.now();
 });
 
-MessageService.listen(MessageType.STOP_WATCHING, ({ data: { userId } }) => {
-    delete watched[userId];
-});
+function getActiveWatch(): ActiveWatch {
+    const filtered = Object.entries(watchHeartbeats).filter(
+        ([userId, time]) =>
+            Date.now() - time < CONSTANTS.TRACKER.HEARTBEAT_INTERVAL + 5000
+    );
+    const watched: ActiveWatch = {};
+
+    filtered.forEach(([userId]) => {
+        watched[userId] = true;
+    });
+
+    return watched;
+}
 
 async function saveFrame(userId) {
     try {
+        const watched = getActiveWatch();
+
+        console.log(watchHeartbeats, watched);
+
         if (Object.keys(watched).length <= 0) {
             return;
         }
@@ -34,7 +49,7 @@ async function saveFrame(userId) {
 function startTracking(userId: string) {
     setInterval(() => {
         saveFrame(userId);
-    }, 180000);
+    }, CONSTANTS.AGGREGATOR.SAMPLE_INTERVAL);
 }
 
 async function getUserId() {
