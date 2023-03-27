@@ -1,7 +1,7 @@
 import { CONSTANTS } from "../constants";
 import { WatchDataService, WatchStream } from "../watch-data/watch-data";
-import { WatchStreamScored } from "./types";
-import { HeuristicService } from "./types";
+import { WatchStreamScored , HeuristicService } from "./types";
+
 
 class TotemPole implements HeuristicService {
     static calcDecayFactor(time) {

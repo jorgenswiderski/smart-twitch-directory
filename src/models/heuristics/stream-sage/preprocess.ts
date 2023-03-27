@@ -1,5 +1,5 @@
-import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
 import * as _ from "lodash";
+import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
 import { Util } from "../../util";
 
 interface SageWatchStream extends WatchStream {
