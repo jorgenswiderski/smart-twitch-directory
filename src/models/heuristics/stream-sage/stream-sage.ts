@@ -3,12 +3,13 @@ import DecisionTree from "decision-tree";
 import { StreamSagePreprocessor } from "./preprocess";
 import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
+import { HeuristicService, WatchStreamScored } from "../types";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
 // }
 
-class StreamSage {
+class StreamSage implements HeuristicService {
     dt: any;
 
     data: { training: any[]; testing: any[] } = {
@@ -74,6 +75,19 @@ class StreamSage {
     predict(stream: WatchStream) {
         const encoded = this.preprocessor.encodeEntry(stream);
         return this.dt.predict(encoded);
+    }
+
+    scoreAndSortStreams(streams: WatchStream[]) {
+        const scored = streams.map((stream) => ({
+            ...stream,
+            score: this.predict(stream),
+        }));
+
+        return StreamSage.sortStreams(scored);
+    }
+
+    static sortStreams(channelData: WatchStreamScored[]): WatchStreamScored[] {
+        return channelData.sort((a, b) => b.score - a.score);
     }
 }
 

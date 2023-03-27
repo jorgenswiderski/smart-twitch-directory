@@ -3,8 +3,7 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { scoreStreams } from "../models/heuristics/totem-pole";
-import { StreamSageService } from "../models/heuristics/stream-sage/stream-sage";
+import { TotemPoleService } from "../models/heuristics/totem-pole";
 
 const GridContainer = styled.div`
     display: grid;
@@ -17,29 +16,12 @@ export function ChannelsGrid() {
     const [userId, setUserId] = useState();
     const [isLoaded, setIsLoaded] = useState(false);
 
-    function injectScores(channelData: any[]) {
-        return channelData.map((channel) => ({
-            ...channel,
-            score: StreamSageService.predict(channel),
-        }))
-    }
-
-    function sortChannels(channelData: any[]) {
-        // const positiveChannels = channelData.filter((stream) => stream.score > 0);
-        // const negativeChannels = channelData.filter((stream) => stream.score <= 0);
-
-        // positiveChannels.sort((a, b) => b.score - a.score);
-        // negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
-
-        // return positiveChannels.concat(negativeChannels);
-
-        return channelData.sort((a, b) => b.score - a.score);
-    }
-
     function updateChannels(id: string) {
         HelixApi.getStreamsFollowed(id).then((response) => {
             if (response) {
-                setChannels(sortChannels(injectScores(response.data.data)));
+                const channelData = response.data.data;
+                const scored = TotemPoleService.scoreAndSortStreams(channelData);
+                setChannels(scored);
             }
         });
     }
