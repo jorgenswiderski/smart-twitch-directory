@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
 import { scoreStreams } from "../models/heuristics/totem-pole";
+import { StreamSageService } from "../models/heuristics/stream-sage/stream-sage";
 
 const GridContainer = styled.div`
     display: grid;
@@ -17,28 +18,22 @@ export function ChannelsGrid() {
     const [isLoaded, setIsLoaded] = useState(false);
 
     function injectScores(channelData: any[]) {
-        const categoryMap = {};
-
-        channelData.forEach(({user_id, game_id}) => {
-            categoryMap[user_id] = game_id;
-        });
-
-        const scores = scoreStreams(categoryMap);
-
         return channelData.map((channel) => ({
             ...channel,
-            score: scores[channel.user_id] || 0,
+            score: StreamSageService.predict(channel),
         }))
     }
 
     function sortChannels(channelData: any[]) {
-        const positiveChannels = channelData.filter((stream) => stream.score > 0);
-        const negativeChannels = channelData.filter((stream) => stream.score <= 0);
+        // const positiveChannels = channelData.filter((stream) => stream.score > 0);
+        // const negativeChannels = channelData.filter((stream) => stream.score <= 0);
 
-        positiveChannels.sort((a, b) => b.score - a.score);
-        negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
+        // positiveChannels.sort((a, b) => b.score - a.score);
+        // negativeChannels.sort((a,b) => b.viewer_count - a.viewer_count);
 
-        return positiveChannels.concat(negativeChannels);
+        // return positiveChannels.concat(negativeChannels);
+
+        return channelData.sort((a, b) => b.score - a.score);
     }
 
     function updateChannels(id: string) {

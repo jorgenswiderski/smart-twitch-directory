@@ -2,6 +2,9 @@ const HEURISTICS = {
     TOTEM_POLE: {
         CATEGORY_WEIGHT: 4,
     },
+    STREAM_SAGE: {
+        TRAINING_PERCENT: 0.75,
+    },
 };
 
 const AGGREGATOR = {

@@ -1,79 +1,201 @@
-import { ActiveWatch } from "../../watch-data/types";
-import { WatchDataService } from "../../watch-data/watch-data";
+import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
+import * as _ from "lodash";
+import { Util } from "../../util";
 
-export interface StreamSageTrainingData {
-    inputs: StreamSageStream[][];
-    outputs: number[][];
+interface SageWatchStream extends WatchStream {
+    watched: boolean;
 }
 
-export interface StreamSageStream {
-    user_id: number;
-    game_id: number;
-    title: string;
-    viewer_count: number;
-    started_at: string;
-    language: string;
-    tags: string[];
-    is_mature: boolean;
-}
+export class StreamSagePreprocessor {
+    rawData: SageWatchStream[];
 
-export interface StreamSageSample {
-    time: number;
-    watched: ActiveWatch;
-    followedStreams: StreamSageStream[];
-}
+    data: any;
 
-export async function getStreamSageData(): Promise<StreamSageTrainingData> {
-    /*
-                // "id": "41997648171",
-                "user_id": "71092938",
-                // "user_login": "xqc",
-                // "user_name": "xQc",
-                "game_id": "509658",
-                // "game_name": "Just Chatting",
-                // "type": "live",
-                "title": "⏺️LIVE⏺️CLICK⏺️NOW⏺️DRAMA⏺️MEGA⏺️ULTRA⏺️REACT⏺️WARLORD⏺️GAMEPLAY⏺️GOD⏺️#1 AT EVERYTHING⏺️GENIUS⏺️WATCH ME BECOME⏺️A MINECRAFT⏺️SCIENTIST⏺️",
-                "viewer_count": 62079,
-                "started_at": "2023-03-24T02:59:00Z",
-                "language": "en",
-                // "thumbnail_url": "https://static-cdn.jtvnw.net/previews-ttv/live_user_xqc-{width}x{height}.jpg",
-                // "tag_ids": [],
-                "tags": [],
-                "is_mature": false
-*/
-    await WatchDataService.waitForData();
+    loading: Promise<void>;
 
-    const pruned = WatchDataService.data.map((entry) => ({
-        ...entry,
-        followedStreams: entry.followedStreams.map(
-            ({
-                user_id,
-                game_id,
-                title,
-                viewer_count,
-                started_at,
-                language,
-                tags,
-                is_mature,
-            }) => ({
-                user_id: Number(user_id),
-                game_id: Number(game_id),
-                title,
-                viewer_count,
-                started_at,
-                language,
-                tags,
-                is_mature,
-            })
-        ),
-    }));
+    constructor() {
+        this.loading = new Promise((resolve, reject) => {
+            this.getData()
+                .then(() => {
+                    resolve();
+                })
+                .catch((err) => {
+                    console.error(err);
+                    reject();
+                });
+        });
+    }
 
-    return {
-        inputs: pruned.map((entry) => entry.followedStreams),
-        outputs: pruned.map((entry) =>
-            entry.followedStreams.map((stream) =>
-                entry.watched[String(stream.user_id)] ? 1 : 0
+    async getData() {
+        await WatchDataService.waitForData();
+        const samples = WatchDataService.data;
+
+        this.rawData = samples
+            .map((sample) =>
+                sample.followedStreams.map((stream) => ({
+                    ...stream,
+                    watched: sample.watched[stream.user_id] ?? false,
+                }))
             )
-        ),
+            .flat();
+    }
+
+    static stopwords = [
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "for",
+        "if",
+        "in",
+        "into",
+        "is",
+        "it",
+        "no",
+        "not",
+        "of",
+        "on",
+        "or",
+        "such",
+        "that",
+        "the",
+        "their",
+        "then",
+        "there",
+        "these",
+        "they",
+        "this",
+        "to",
+        "was",
+        "will",
+        "with",
+    ];
+
+    static tokenize(text: string): string[] {
+        const words = text.toLowerCase().split(/\W+/);
+        return words.filter(
+            (word) => !StreamSagePreprocessor.stopwords.includes(word)
+        );
+    }
+
+    createVocabulary() {
+        const allTitles = this.rawData.map((entry) => entry.title);
+        const tokenizedTitles = allTitles.map(StreamSagePreprocessor.tokenize);
+        const allWords = _.flatten(tokenizedTitles);
+        const wordCount = _.countBy(allWords);
+
+        const vocabularySize = 50;
+        const vocabulary = _(wordCount)
+            .map((count, word) => ({ word, count }))
+            .orderBy("count", "desc")
+            .slice(0, vocabularySize)
+            .map((entry) => entry.word)
+            .value();
+
+        return vocabulary;
+    }
+
+    static encodeTitle(
+        title: string,
+        vocabulary: string[]
+    ): Record<string, number> {
+        const tokens = StreamSagePreprocessor.tokenize(title);
+        const encoding: Record<string, number> = {};
+
+        for (const word of vocabulary) {
+            encoding[`title_${word}`] = tokens.includes(word) ? 1 : 0;
+        }
+
+        return encoding;
+    }
+
+    encodingKeys: {
+        // onehot unique values
+        user_id: string[];
+        game_id: string[];
+        language: string[];
+
+        viewer_count: number[]; // min, max
+        title: string[]; // vocabulary
     };
+
+    buildEncoders() {
+        // Extract the unique values for categorical features
+        this.encodingKeys = {
+            user_id: _.uniq(this.rawData.map((entry) => entry.user_id)),
+            game_id: _.uniq(this.rawData.map((entry) => entry.game_id)),
+            language: _.uniq(this.rawData.map((entry) => entry.language)),
+
+            // Calculate the min and max values for viewer_count
+            viewer_count: [
+                _.min(this.rawData.map((entry) => entry.viewer_count)),
+                _.max(this.rawData.map((entry) => entry.viewer_count)),
+            ],
+
+            title: this.createVocabulary(),
+        };
+    }
+
+    // FIXME
+    encodeEntry(entry: /* SageWatchStream */ any) {
+        const userIdEncoding = Util.encodeOneHot(
+            entry.user_id,
+            this.encodingKeys.user_id,
+            "userId"
+        );
+        const gameIdEncoding = Util.encodeOneHot(
+            entry.game_id,
+            this.encodingKeys.game_id,
+            "gameId"
+        );
+        const languageEncoding = Util.encodeOneHot(
+            entry.language,
+            this.encodingKeys.language,
+            "language"
+        );
+        const titleEncoding = StreamSagePreprocessor.encodeTitle(
+            entry.title,
+            this.encodingKeys.title
+        );
+
+        const viewerCountNormalized = Util.normalize(
+            entry.viewer_count,
+            this.encodingKeys.viewer_count[0],
+            this.encodingKeys.viewer_count[1]
+        );
+
+        const preprocessed = {
+            ...userIdEncoding,
+            ...gameIdEncoding,
+            ...languageEncoding,
+            ...titleEncoding,
+            viewer_count: viewerCountNormalized,
+            is_mature: entry.is_mature,
+            watched: entry?.watched ? 1 : 0, // Add this field to distinguish between watched and notWatched streams
+        };
+
+        // console.log(preprocessed);
+
+        return preprocessed;
+    }
+
+    preprocess() {
+        this.buildEncoders();
+
+        // Preprocess the raw data
+        const preprocessedData = this.rawData.map(this.encodeEntry.bind(this));
+
+        this.data = preprocessedData;
+    }
+
+    async getResults() {
+        await this.loading;
+        this.preprocess();
+        return this.data;
+    }
 }

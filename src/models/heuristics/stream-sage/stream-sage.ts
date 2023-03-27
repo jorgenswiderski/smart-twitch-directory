@@ -1,99 +1,86 @@
-import * as tf from "@tensorflow/tfjs";
-import {
-    getStreamSageData,
-    StreamSageSample,
-    StreamSageStream,
-    StreamSageTrainingData,
-} from "./preprocess";
+import * as _ from "lodash";
+import DecisionTree from "decision-tree";
+import { StreamSagePreprocessor } from "./preprocess";
+import { WatchStream } from "../../watch-data/watch-data";
+import { CONSTANTS } from "../../constants";
 
-function pad(arr: any[], len: number, fillValue: any) {
-    return arr.concat(Array(len).fill(fillValue)).slice(0, len);
-}
+// function pad(arr: any[], len: number, fillValue: any) {
+//     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
+// }
 
 class StreamSage {
-    model: tf.Sequential;
+    dt: any;
 
-    numStreams: number;
+    data: { training: any[]; testing: any[] } = {
+        training: [],
+        testing: [],
+    };
 
-    constructor(trainingData: StreamSageTrainingData) {
-        console.log("Building StreamSage...");
-        this.numStreams = StreamSage.calcNumStreams(trainingData);
-        console.log(`numStreams: ${this.numStreams}`);
-        this.model = this.createModel();
+    preprocessor: StreamSagePreprocessor;
 
-        console.log("Training StreamSage...");
-
-        this.trainModel(trainingData)
-            .then(() => {
-                console.log("Training complete.");
-            })
-            .catch((err) => {
-                console.error(err);
-            });
+    constructor() {
+        this.preprocessor = new StreamSagePreprocessor();
+        this.createModel().catch((err) => console.error(err));
     }
 
-    static calcNumStreams(trainingData: StreamSageTrainingData): number {
-        const streamerIds = new Set(
-            trainingData.inputs
-                .map((entry) => entry.map((stream) => stream.user_id))
-                .flat()
+    async prepareDataset() {
+        const dataset = await this.preprocessor.getResults();
+        const scrambled = _(dataset).shuffle().value();
+        const splitPoint = Math.floor(
+            scrambled.length * CONSTANTS.HEURISTICS.STREAM_SAGE.TRAINING_PERCENT
+        );
+        this.data.training = scrambled.slice(0, splitPoint);
+        this.data.testing = scrambled.slice(splitPoint);
+
+        console.log(
+            "training",
+            this.data.training.length,
+            "testing",
+            this.data.testing.length
+        );
+    }
+
+    async createModel() {
+        await this.prepareDataset();
+        const dataset = this.data.training;
+
+        // Define the feature names, aka input params
+        const features = Object.keys(dataset[0]).filter(
+            (key) => key !== "watched"
         );
 
-        return streamerIds.size;
+        console.log("features", features);
+
+        // Define the target class, aka output param(s)
+        const className = "watched";
+
+        // Instantiate the decision tree model
+        this.dt = new DecisionTree(dataset, className, features);
+
+        if (this.data.testing.length > 0) {
+            this.eval();
+        }
     }
 
-    createModel() {
-        const model = tf.sequential();
-        model.add(
-            tf.layers.dense({
-                inputShape: [this.numStreams * 8],
-                units: 32,
-                activation: "relu",
-            })
-        );
-        model.add(tf.layers.dense({ units: 32, activation: "relu" }));
-        model.add(
-            tf.layers.dense({ units: this.numStreams, activation: "softmax" })
-        );
-        model.compile({ loss: "categoricalCrossentropy", optimizer: "adam" });
-        return model;
+    eval() {
+        const accuracy = this.dt.evaluate(this.data.testing);
+        console.log("accuracy", accuracy);
+
+        console.log(this.dt.toJSON());
+
+        // console.log("predict", this.dt.predict(this.data.testing[0]));
     }
 
-    async trainModel(trainingData: StreamSageTrainingData) {
-        console.log(trainingData);
-
-        const td = {
-            ...trainingData,
-            inputs: trainingData.inputs.map((sample) =>
-                pad(
-                    sample.map((stream) => Object.values(stream)).flat(),
-                    this.numStreams * 8,
-                    0
-                )
-            ),
-            outputs: trainingData.outputs.map((sample) =>
-                pad(sample, this.numStreams, 0)
-            ),
-        };
-
-        // console.log({
-        //     inputs: td.inputs.slice(0, 3),
-        //     outputs: td.outputs.slice(0, 3),
-        // });
-
-        const xs = tf.tensor2d(td.inputs);
-        const ys = tf.tensor2d(td.outputs);
-        const history = await this.model.fit(xs, ys, { epochs: 50 });
-        return history;
+    predict(stream: WatchStream) {
+        const encoded = this.preprocessor.encodeEntry(stream);
+        return this.dt.predict(encoded);
     }
-
-    // predict(streamData) {
-    //     const xs = tf.tensor2d(streamData, [1, this.numStreams * 6]);
-    //     const ys = this.model.predict(xs);
-    //     const predictions = Array.from(ys.dataSync());
-    //     return predictions;
-    // }
 }
-getStreamSageData().then((data) => {
-    const StreamSageB = new StreamSage(data);
+
+console.log("Loading stream-sage.ts");
+
+export const StreamSageService = new StreamSage();
+
+StreamSageService.createModel().catch((err) => {
+    console.error(err);
 });

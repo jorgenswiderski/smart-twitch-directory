@@ -19,7 +19,7 @@ import { ActiveWatch } from "./types";
                 "is_mature": false
 */
 
-interface Stream {
+export interface WatchStream {
     id: string;
     user_id: string;
     user_login: string;
@@ -40,7 +40,7 @@ interface Stream {
 export interface WatchSample {
     time: number;
     watched: ActiveWatch;
-    followedStreams: Stream[];
+    followedStreams: WatchStream[];
 }
 
 class WatchData {
@@ -56,7 +56,7 @@ class WatchData {
         });
     }
 
-    addEntry(watched: ActiveWatch, followedStreams: Stream[]) {
+    addEntry(watched: ActiveWatch, followedStreams: WatchStream[]) {
         const entry = {
             time: Date.now(),
             watched,

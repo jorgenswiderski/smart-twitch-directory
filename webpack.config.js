@@ -13,6 +13,7 @@ module.exports = {
         directory: './src/content/directory.tsx',
         "track-watch": './src/content/track-watch.ts',
         background: './src/background/background.ts',
+        'stream-sage': './src/models/heuristics/stream-sage/stream-sage.ts',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -40,9 +41,8 @@ module.exports = {
     },
     resolve: {
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        fallback: {
-
-        },
+        fallback: 
+            { "assert": require.resolve("assert/") },
     },
     devServer: {
         static: './dist',
