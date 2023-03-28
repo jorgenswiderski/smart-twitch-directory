@@ -4,6 +4,7 @@ import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
 import { RandomForest } from "./random-forest";
 import { StreamSagePreprocessor } from "../stream-sage/preprocess";
+import { MlArrayMetrics } from "../../ml-array-metrics";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
@@ -73,9 +74,22 @@ class CleverCoconut implements HeuristicService {
         const accuracy = this.forest.evaluate(this.data.testing);
         console.log("accuracy", accuracy);
 
-        // console.log(this.forest.toJSON());
+        const trueValues = this.data.testing.map((entry) => entry.watched);
+        const predictedValues = this.forest.predict(this.data.testing);
 
-        // console.log("predict", this.dt.predict(this.data.testing[0]));
+        const mae = MlArrayMetrics.meanAbsoluteError(
+            trueValues,
+            predictedValues
+        );
+        const mse = MlArrayMetrics.meanSquaredError(
+            trueValues,
+            predictedValues
+        );
+        const rsq = MlArrayMetrics.rSquared(trueValues, predictedValues);
+
+        console.log("Mean Absolute Error:", mae);
+        console.log("Mean Squared Error:", mse);
+        console.log("R-squared:", rsq);
     }
 
     predict(stream: WatchStream): number {
