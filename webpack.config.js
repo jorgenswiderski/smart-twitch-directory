@@ -13,6 +13,7 @@ module.exports = {
         directory: './src/content/directory.tsx',
         "track-watch": './src/content/track-watch.ts',
         background: './src/background/background.ts',
+        'clever-coconut': './src/models/heuristics/clever-coconut/clever-coconut.ts',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

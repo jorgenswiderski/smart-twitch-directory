@@ -3,7 +3,7 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { TotemPoleService } from "../models/heuristics/totem-pole";
+import { CleverCoconutService } from "../models/heuristics/clever-coconut/clever-coconut";
 
 const GridContainer = styled.div`
     display: grid;
@@ -16,18 +16,23 @@ export function ChannelsGrid() {
     const [userId, setUserId] = useState();
     const [isLoaded, setIsLoaded] = useState(false);
 
-    function updateChannels(id: string) {
-        HelixApi.getStreamsFollowed(id).then((response) => {
+    async function updateChannels(id: string) {
+        try {
+            const response = await HelixApi.getStreamsFollowed(id);
+            await CleverCoconutService.forest.waitForModel();
+
             if (response) {
                 const channelData = response.data.data;
-                const scored = TotemPoleService.scoreAndSortStreams(channelData);
+                const scored = CleverCoconutService.scoreAndSortStreams(channelData);
                 setChannels(scored);
             }
-        });
+        } catch (err) {
+            console.error(err)
+        }
     }
 
     const [timer, setTimer] = useState();
-    const UPDATE_ENABLED = true;
+    const UPDATE_ENABLED = false;
     const UPDATE_INTERVAL = 60000;
 
     useEffect(() => {

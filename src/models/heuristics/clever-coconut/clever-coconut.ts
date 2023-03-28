@@ -1,16 +1,16 @@
 import * as _ from "lodash";
-import DecisionTree from "decision-tree";
-import { StreamSagePreprocessor } from "./preprocess";
 import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
+import { RandomForest } from "./random-forest";
+import { StreamSagePreprocessor } from "../stream-sage/preprocess";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
 // }
 
-class StreamSage implements HeuristicService {
-    dt: any;
+class CleverCoconut implements HeuristicService {
+    forest: RandomForest;
 
     data: { training: any[]; testing: any[] } = {
         training: [],
@@ -55,8 +55,14 @@ class StreamSage implements HeuristicService {
 
         console.log(features, className);
 
-        // Instantiate the decision tree model
-        this.dt = new DecisionTree(dataset, className, features);
+        // Instantiate the Random Forest
+        this.forest = new RandomForest(dataset, {
+            numTrees: 100,
+            outputFeatures: className,
+            inputFeatures: features,
+        });
+
+        await this.forest.waitForModel();
 
         if (this.data.testing.length > 0) {
             this.eval();
@@ -64,26 +70,26 @@ class StreamSage implements HeuristicService {
     }
 
     eval() {
-        const accuracy = this.dt.evaluate(this.data.testing);
+        const accuracy = this.forest.evaluate(this.data.testing);
         console.log("accuracy", accuracy);
 
-        console.log(this.dt.toJSON());
+        // console.log(this.forest.toJSON());
 
         // console.log("predict", this.dt.predict(this.data.testing[0]));
     }
 
-    predict(stream: WatchStream) {
+    predict(stream: WatchStream): number {
         const encoded = this.preprocessor.encodeEntry(stream);
-        return this.dt.predict(encoded);
+        return this.forest.predict([encoded])[0];
     }
 
     scoreAndSortStreams(streams: WatchStream[]) {
-        const scored = streams.map((stream) => ({
+        const scored: WatchStreamScored[] = streams.map((stream) => ({
             ...stream,
             score: this.predict(stream),
         }));
 
-        return StreamSage.sortStreams(scored);
+        return CleverCoconut.sortStreams(scored);
     }
 
     static sortStreams(channelData: WatchStreamScored[]): WatchStreamScored[] {
@@ -91,10 +97,6 @@ class StreamSage implements HeuristicService {
     }
 }
 
-console.log("Loading stream-sage.ts");
+console.log("Loading clever-coconut.ts");
 
-export const StreamSageService = new StreamSage();
-
-StreamSageService.createModel().catch((err) => {
-    console.error(err);
-});
+export const CleverCoconutService = new CleverCoconut();
