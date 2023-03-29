@@ -3,7 +3,13 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { CleverCoconutService } from "../models/heuristics/clever-coconut/clever-coconut";
+import { MinotaurService } from "../models/heuristics/minotaur/minotaur";
+import { WhiteKnightService } from "../models/heuristics/white-knight/white-knight";
+import { OracleService } from "../models/heuristics/oracle/oracle";
+// import { abcd } from "../models/heuristics/minotaur/minotaur";
+// import { TotemPoleService } from "../models/heuristics/totem-pole";
+
+// const f = abcd;
 
 const GridContainer = styled.div`
     display: grid;
@@ -19,11 +25,11 @@ export function ChannelsGrid() {
     async function updateChannels(id: string) {
         try {
             const response = await HelixApi.getStreamsFollowed(id);
-            await CleverCoconutService.forest.waitForModel();
 
             if (response) {
                 const channelData = response.data.data;
-                const scored = CleverCoconutService.scoreAndSortStreams(channelData);
+                const scored = (await OracleService).scoreAndSortStreams(channelData);
+                // const scored = TotemPoleService.scoreAndSortStreams(channelData);
                 setChannels(scored);
             }
         } catch (err) {
@@ -32,7 +38,7 @@ export function ChannelsGrid() {
     }
 
     const [timer, setTimer] = useState();
-    const UPDATE_ENABLED = false;
+    const UPDATE_ENABLED = true;
     const UPDATE_INTERVAL = 60000;
 
     useEffect(() => {

@@ -6,6 +6,8 @@
         "@tensorflow/tfjs": "^4.2.0",
         "assert": "^2.0.0",
         "axios": "^1.3.4",
+        "buffer": "^6.0.3",
+        "crypto-browserify": "^3.12.0",
         "decision-tree": "^0.3.7",
         "lodash": "^4.17.21",
         "ml-random-forest": "^2.1.0",
@@ -13,6 +15,7 @@
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
         "react-loader-spinner": "^5.3.4",
+        "stream-browserify": "^3.0.0",
         "styled-components": "5.3.0",
         "webextension-polyfill": "^0.10.0"
     },
@@ -42,7 +45,9 @@
         "typescript": "^5.0.2",
         "webpack": "^5.76.2",
         "webpack-cli": "^5.0.1",
-        "webpack-dev-server": "^4.13.1"
+        "webpack-dev-server": "^4.13.1",
+        "worker-loader": "^3.0.8",
+        "worker-plugin": "^5.0.1"
     },
     "resolutions": {
         "react-loader-spinner/styled-components": "5.3.0"
@@ -54,6 +59,7 @@
         "build": "webpack --mode production && web-ext build --source-dir dist --overwrite-dest",
         "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
         "lint-fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-        "server-start": "webpack-dev-server --mode development --open"
+        "server-start": "webpack-dev-server --mode development --open",
+        "build-worker": "webpack --config webpack.worker.config.js"
     }
 }

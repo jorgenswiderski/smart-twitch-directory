@@ -58,7 +58,7 @@ class CleverCoconut implements HeuristicService {
 
         // Instantiate the Random Forest
         this.forest = new RandomForest(dataset, {
-            numTrees: 100,
+            numTrees: 200,
             outputFeatures: className,
             inputFeatures: features,
         });

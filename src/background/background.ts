@@ -1,4 +1,6 @@
+import Browser from "webextension-polyfill";
 import { HelixApi } from "../api/helix";
+import { CONFIG } from "../models/config";
 import { CONSTANTS } from "../models/constants";
 import { MessageService, MessageType } from "../models/messaging";
 import { ActiveWatch } from "../models/watch-data/types";
@@ -66,3 +68,20 @@ async function init() {
 init().catch((err) => {
     console.error(err);
 });
+
+async function loadSavedData(): Promise<void> {
+    try {
+        const response = await fetch(Browser.runtime.getURL("saved-data.json"));
+        const data = await response.json();
+
+        await Browser.storage.local.set(data);
+
+        console.log("Saved data loaded into local storage");
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+if (CONFIG.DEBUG.LOAD_SAVED_DATA) {
+    loadSavedData();
+}

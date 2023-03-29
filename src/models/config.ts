@@ -24,6 +24,11 @@ const API = {
     },
 };
 
+const DEBUG = {
+    LOAD_SAVED_DATA: true,
+};
+
 export const CONFIG = {
     API,
+    DEBUG,
 };

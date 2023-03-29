@@ -104,6 +104,11 @@ class WatchData {
             }, 1000);
         });
     }
+
+    async getData() {
+        await this.waitForData();
+        return this.data;
+    }
 }
 
 export const WatchDataService = new WatchData();

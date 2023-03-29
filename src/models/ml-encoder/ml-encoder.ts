@@ -6,6 +6,7 @@ export enum EncodingInstruction {
     NORMALIZE, // Normalize a numerical value to the range [0,1]
     BOOLEAN, // Convert a boolean value to numerical 0 | 1
     BAG_OF_WORDS, // Convert a string to a series of boolean values indicating the presence/absence of the most common words in the dataset
+    CATEGORY_INDEX, // Similar to ONE_HOT, but encodes to a single number indicating the index of the category in the encoding map
 }
 
 // support for nested instructions, for encoding values nested within the object
@@ -46,12 +47,18 @@ interface BagOfWordsEncoding extends EncodingBase {
     vocabulary: string[];
 }
 
+interface CategoryIndexEncoding extends EncodingBase {
+    encodingType: EncodingInstruction.CATEGORY_INDEX;
+    categories: string[];
+}
+
 type Encoding =
     | OneHotEncoding
     | CategoriesEncoding
     | NormalizeEncoding
     | BooleanEncoding
-    | BagOfWordsEncoding;
+    | BagOfWordsEncoding
+    | CategoryIndexEncoding;
 
 export class MachineLearningEncoder {
     // Helper function to normalize a value to the range [0,1] based on a given min and max value
@@ -112,9 +119,12 @@ export class MachineLearningEncoder {
                         new Set(dataset.map((entry) => entry[key]).flat())
                     ),
                 };
-            } else if (instruction === EncodingInstruction.ONE_HOT) {
+            } else if (
+                instruction === EncodingInstruction.ONE_HOT ||
+                instruction === EncodingInstruction.CATEGORY_INDEX
+            ) {
                 encoding[key] = {
-                    encodingType: EncodingInstruction.ONE_HOT,
+                    encodingType: instruction,
                     categories: Array.from(
                         new Set(dataset.map((entry) => entry[key]))
                     ),
@@ -210,6 +220,10 @@ export class MachineLearningEncoder {
                 encodingKey.encodingType === EncodingInstruction.BOOLEAN
             ) {
                 encodedEntry[key] = entry[key] ? 1 : 0;
+            } else if (
+                encodingKey.encodingType === EncodingInstruction.CATEGORY_INDEX
+            ) {
+                encodedEntry[key] = encodingKey.categories.indexOf(entry[key]);
             } else if (
                 typeof encodingKey === "object" &&
                 !Array.isArray(encodingKey)

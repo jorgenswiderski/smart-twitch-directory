@@ -1,6 +1,7 @@
 const path = require('path');
 const TransformJson = require('transform-json-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const WorkerPlugin = require("worker-plugin");
 const webpack = require('webpack');
 const packageInfo = require('./package.json')
 
@@ -14,6 +15,7 @@ module.exports = {
         "track-watch": './src/content/track-watch.ts',
         background: './src/background/background.ts',
         'clever-coconut': './src/models/heuristics/clever-coconut/clever-coconut.ts',
+        'minotaur-worker': './src/models/heuristics/minotaur/worker-train.ts',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -42,7 +44,12 @@ module.exports = {
     resolve: {
         extensions: ['.js', '.jsx', '.ts', '.tsx'],
         fallback: 
-            { "assert": require.resolve("assert/") },
+            {
+                "assert": require.resolve("assert/"),
+                "crypto": require.resolve("crypto-browserify"),
+                "buffer": require.resolve("buffer/") ,
+                "stream": require.resolve("stream-browserify")
+            },
     },
     devServer: {
         static: './dist',
@@ -66,8 +73,10 @@ module.exports = {
             patterns: [
                 {from: 'src/static', to: './',},
                 {from: 'src/images', to: './images',},
+                {from: 'src/saved-data.json', to: './'}
             ]
         }),
+        new WorkerPlugin(),
     ],
     // For when 1 HTML page can have multiple entry points
     // optimization: {

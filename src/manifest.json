@@ -31,5 +31,6 @@
         "gecko": {
             "id": "jorgen.swiderski@gmail.com"
         }
-    }
+    },
+    "web_accessible_resources": ["saved-data.json"]
 }

@@ -2,6 +2,8 @@ import browser from "webextension-polyfill";
 
 export enum MessageType {
     WATCHING_PULSE,
+    TRAIN_MINOTAUR,
+    TRAIN_MINOTAUR_DONE,
 }
 
 export class MessageService {
