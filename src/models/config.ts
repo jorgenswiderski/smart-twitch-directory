@@ -26,6 +26,7 @@ const API = {
 
 const DEBUG = {
     LOAD_SAVED_DATA: true,
+    DUMP_SAVED_DATA: false,
 };
 
 export const CONFIG = {

@@ -37,6 +37,10 @@ export interface WatchStream {
     is_mature: boolean;
 }
 
+export interface WatchStreamWithLabel extends WatchStream {
+    watched: boolean;
+}
+
 export interface WatchSample {
     time: number;
     watched: ActiveWatch;
@@ -98,10 +102,10 @@ class WatchData {
     async waitForData() {
         return new Promise<void>((resolve, reject) => {
             setInterval(() => {
-                if (this.data.length > 0) {
+                if (this.data && this.data.length > 0) {
                     resolve();
                 }
-            }, 1000);
+            }, 500);
         });
     }
 

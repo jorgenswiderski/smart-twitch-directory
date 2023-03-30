@@ -3,13 +3,8 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { MinotaurService } from "../models/heuristics/minotaur/minotaur";
-import { WhiteKnightService } from "../models/heuristics/white-knight/white-knight";
-import { OracleService } from "../models/heuristics/oracle/oracle";
-// import { abcd } from "../models/heuristics/minotaur/minotaur";
 // import { TotemPoleService } from "../models/heuristics/totem-pole";
-
-// const f = abcd;
+import { JuicyPearService } from "../models/heuristics/juicy-pear/juicy-pear";
 
 const GridContainer = styled.div`
     display: grid;
@@ -28,7 +23,7 @@ export function ChannelsGrid() {
 
             if (response) {
                 const channelData = response.data.data;
-                const scored = (await OracleService).scoreAndSortStreams(channelData);
+                const scored = (await JuicyPearService).scoreAndSortStreams(channelData);
                 // const scored = TotemPoleService.scoreAndSortStreams(channelData);
                 setChannels(scored);
             }

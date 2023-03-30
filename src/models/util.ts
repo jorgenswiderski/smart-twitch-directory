@@ -24,4 +24,9 @@ export class Util {
     static tokenize(text: string): string[] {
         return text.toLowerCase().split(" ");
     }
+
+    // Transpose a 2D array
+    static transpose(array) {
+        return array[0].map((col, i) => array.map((row) => row[i]));
+    }
 }

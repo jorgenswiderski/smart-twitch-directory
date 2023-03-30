@@ -85,3 +85,10 @@ async function loadSavedData(): Promise<void> {
 if (CONFIG.DEBUG.LOAD_SAVED_DATA) {
     loadSavedData();
 }
+
+if (CONFIG.DEBUG.DUMP_SAVED_DATA) {
+    (async () => {
+        const data = await Browser.storage.local.get();
+        console.log(data);
+    })();
+}
