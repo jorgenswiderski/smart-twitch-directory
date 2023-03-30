@@ -3,14 +3,18 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-// import { TotemPoleService } from "../models/heuristics/totem-pole";
 import { JuicyPearService } from "../models/heuristics/juicy-pear/juicy-pear";
+import { TotemPoleService } from "../models/heuristics/totem-pole";
 
 const GridContainer = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
     grid-gap: 10px;
 `;
+
+async function HeuristicService() {
+    return (await JuicyPearService) ?? TotemPoleService;
+}
 
 export function ChannelsGrid() {
     const [channels, setChannels] = useState([]);
@@ -23,7 +27,7 @@ export function ChannelsGrid() {
 
             if (response) {
                 const channelData = response.data.data;
-                const scored = (await JuicyPearService).scoreAndSortStreams(channelData);
+                const scored = (await HeuristicService()).scoreAndSortStreams(channelData);
                 // const scored = TotemPoleService.scoreAndSortStreams(channelData);
                 setChannels(scored);
             }

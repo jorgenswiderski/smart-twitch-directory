@@ -14,7 +14,7 @@
         "default_popup": "popup.html"
     },
     "background": {
-        "scripts": ["background.js"]
+        "scripts": ["background.js", "trainer.js"]
     },
     "content_scripts": [
         {

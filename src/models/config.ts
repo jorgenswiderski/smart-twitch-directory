@@ -25,7 +25,7 @@ const API = {
 };
 
 const DEBUG = {
-    LOAD_SAVED_DATA: true,
+    LOAD_SAVED_DATA: false,
     DUMP_SAVED_DATA: false,
 };
 

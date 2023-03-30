@@ -18,6 +18,13 @@ import { OracleCurator } from "../oracle/curator";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
 
+interface LTRModelStats {
+    loss: number;
+    options: MLPOptions;
+    datasetSize: number;
+    time: number;
+}
+
 export interface OracleDataset {
     user_id: number[];
     game_id: number[];
@@ -284,11 +291,14 @@ export class PairwiseLTR {
             .sort((a, b) => b.score - a.score);
     }
 
-    static async getSavedModelStats() {
+    static async getSavedModelStats(): Promise<LTRModelStats | void> {
         const data = await Browser.storage.local.get("pearModel");
-        const { loss, options, datasetSize, time } = data.pearModel;
 
-        return { loss, options, datasetSize, time };
+        if (data.pearModel) {
+            const { loss, options, datasetSize, time } = data.pearModel;
+
+            return { loss, options, datasetSize, time };
+        }
     }
 
     async saveModel(loss: number, options: MLPOptions, datasetSize: number) {
@@ -303,8 +313,12 @@ export class PairwiseLTR {
         });
     }
 
-    static async loadModel(): Promise<PairwiseLTR> {
+    static async loadModel(): Promise<PairwiseLTR | null> {
         const data = await Browser.storage.local.get("pearModel");
+
+        if (!data.pearModel) {
+            return null;
+        }
 
         const { model, loss, options, datasetSize, time } = data.pearModel;
 
@@ -444,7 +458,7 @@ export class PairwiseLTR {
 
         const stats = await PairwiseLTR.getSavedModelStats();
 
-        if (averageLoss < (stats.loss ?? 100)) {
+        if (!stats || averageLoss < (stats?.loss ?? 100)) {
             await model.saveModel(averageLoss, options, data.length);
             console.log("Saved Juicy Pear model to local storage.");
         }
@@ -528,99 +542,103 @@ export class PairwiseLTR {
             labels: data.map((e) => [e[4]]),
         };
     }
+
+    static async newModel(options: MLPOptions): Promise<PairwiseLTR> {
+        const samples = await WatchDataService.getData();
+
+        // Create pairs
+        const pairs: [number, number, number][] = [];
+        const streams = [];
+
+        samples.forEach((sample) => {
+            const watched = sample.followedStreams.filter(
+                (stream) => sample.watched[stream.user_id]
+            );
+            const nonwatched = sample.followedStreams.filter(
+                (stream) => !sample.watched[stream.user_id]
+            );
+
+            watched.forEach((stream1) => {
+                const index1 =
+                    sample.followedStreams.findIndex((s) => s === stream1) +
+                    streams.length;
+
+                nonwatched.forEach((stream2) => {
+                    const index2 =
+                        sample.followedStreams.findIndex((s) => s === stream2) +
+                        streams.length;
+
+                    pairs.push([index1, index2, 1]);
+                    pairs.push([index2, index1, 0]);
+                });
+            });
+
+            streams.push(...sample.followedStreams);
+        });
+
+        const deduped = OracleCurator.deduplicate(pairs);
+
+        const { encoding, data: encodedStreams } =
+            MachineLearningEncoder.encodeDataset(
+                streams,
+                PairwiseLTR.encodingInstructions
+            );
+
+        const encodedValues = encodedStreams.map((stream) =>
+            Object.values(stream)
+        );
+
+        const encodedPairs = deduped.map((entry) =>
+            [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
+        );
+
+        let data = encodedPairs;
+        let testing;
+        let extra = [];
+
+        // Limit the size of rawData
+        if (options?.maxTrainingSize > 0) {
+            const shuffled = _(encodedPairs).shuffle().value();
+            data = shuffled.slice(0, options.maxTrainingSize);
+            testing = shuffled.slice(options.maxTrainingSize);
+        }
+
+        const { dataset, labels } = PairwiseLTR.composeDataset(data);
+
+        const model = new PairwiseLTR(encoding);
+        model.createModel(options);
+        await model.train(dataset, labels);
+
+        const { dataset: dataset2, labels: labels2 } =
+            PairwiseLTR.composeDataset(testing);
+
+        const results = model.evaluate(dataset2, labels2);
+
+        console.log(results);
+
+        const stats = await PairwiseLTR.getSavedModelStats();
+
+        if (!stats || results.loss < (stats?.loss ?? 100)) {
+            await model.saveModel(results.loss, options, data.length);
+            console.log("Saved Juicy Pear model to local storage.");
+        }
+
+        return model;
+    }
 }
 
 console.log("loading oracle.ts");
 
-export const JuicyPearService = (async (options: MLPOptions) => {
-    const samples = await WatchDataService.getData();
-
-    // Create pairs
-    const pairs: [number, number, number][] = [];
-    const streams = [];
-
-    samples.forEach((sample) => {
-        const watched = sample.followedStreams.filter(
-            (stream) => sample.watched[stream.user_id]
-        );
-        const nonwatched = sample.followedStreams.filter(
-            (stream) => !sample.watched[stream.user_id]
-        );
-
-        watched.forEach((stream1) => {
-            const index1 =
-                sample.followedStreams.findIndex((s) => s === stream1) +
-                streams.length;
-
-            nonwatched.forEach((stream2) => {
-                const index2 =
-                    sample.followedStreams.findIndex((s) => s === stream2) +
-                    streams.length;
-
-                pairs.push([index1, index2, 1]);
-                pairs.push([index2, index1, 0]);
-            });
-        });
-
-        streams.push(...sample.followedStreams);
-    });
-
-    const deduped = OracleCurator.deduplicate(pairs);
-
-    const { encoding, data: encodedStreams } =
-        MachineLearningEncoder.encodeDataset(
-            streams,
-            PairwiseLTR.encodingInstructions
-        );
-
-    const encodedValues = encodedStreams.map((stream) => Object.values(stream));
-
-    const encodedPairs = deduped.map((entry) =>
-        [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
-    );
-
-    let data = encodedPairs;
-    let testing;
-    let extra = [];
-
-    // Limit the size of rawData
-    if (options?.maxTrainingSize > 0) {
-        const shuffled = _(encodedPairs).shuffle().value();
-        data = shuffled.slice(0, options.maxTrainingSize);
-        testing = shuffled.slice(options.maxTrainingSize);
-    }
-
-    const { dataset, labels } = PairwiseLTR.composeDataset(data);
-
-    const model = new PairwiseLTR(encoding);
-    model.createModel(options);
-    await model.train(dataset, labels);
-
-    const { dataset: dataset2, labels: labels2 } =
-        PairwiseLTR.composeDataset(testing);
-
-    const results = model.evaluate(dataset2, labels2);
-
-    console.log(results);
-
-    const stats = await PairwiseLTR.getSavedModelStats();
-
-    if (results.loss < (stats.loss ?? 100)) {
-        await model.saveModel(results.loss, options, data.length);
-        console.log("Saved Juicy Pear model to local storage.");
-    }
-
-    return model;
-})({
-    hiddenLayerSizes: [32],
-    outputSize: 1,
-    training: {
-        epochs: 10,
-        batchSize: 4,
-    },
-    learningRate: 0.001,
-    maxTrainingSize: 25600,
-});
+// export const JuicyPearService = PairwiseLTR.newModel({
+//     hiddenLayerSizes: [32],
+//     outputSize: 1,
+//     training: {
+//         epochs: 10,
+//         batchSize: 4,
+//     },
+//     learningRate: 0.001,
+//     maxTrainingSize: 25600,
+// });
 
 // export const JuicyPearService = PairwiseLTR.crossValidate(
 // {
@@ -663,4 +681,4 @@ export const JuicyPearService = (async (options: MLPOptions) => {
 //         console.error(err);
 //     });
 
-// export const JuicyPearService = PairwiseLTR.loadModel();
+export const JuicyPearService = PairwiseLTR.loadModel();
