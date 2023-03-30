@@ -1,52 +1,50 @@
 import * as _ from "lodash";
 import * as tf from "@tensorflow/tfjs";
+import moment from "moment";
+import Browser from "webextension-polyfill";
+
 import {
     EncodingInstruction,
     EncodingKeys,
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
-import {
-    WatchDataService,
-    WatchSample,
-    WatchStream,
-    WatchStreamWithLabel,
-} from "../../watch-data/watch-data";
+import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
-import { CONSTANTS } from "../../constants";
-import Browser from "webextension-polyfill";
 import { OracleCurator } from "../oracle/curator";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
 
 interface LTRModelStats {
     loss: number;
-    options: MLPOptions;
+    options: LTRHyperOptions;
     datasetSize: number;
     time: number;
 }
 
-export interface OracleDataset {
-    user_id: number[];
-    game_id: number[];
+type ActivationIdentifier =
+    | "elu"
+    | "hardSigmoid"
+    | "linear"
+    | "relu"
+    | "relu6"
+    | "selu"
+    | "sigmoid"
+    | "softmax"
+    | "softplus"
+    | "softsign"
+    | "tanh"
+    | "swish"
+    | "mish";
+
+interface LTROptions {
+    autoSave?: boolean;
 }
 
-export interface MLPOptions {
+interface LTRHyperOptions {
     hiddenLayerSizes: number[];
     outputSize: number;
-    activation?:
-        | "elu"
-        | "hardSigmoid"
-        | "linear"
-        | "relu"
-        | "relu6"
-        | "selu"
-        | "sigmoid"
-        | "softmax"
-        | "softplus"
-        | "softsign"
-        | "tanh"
-        | "swish"
-        | "mish";
+    hiddenActivation?: ActivationIdentifier;
+    outputActivation?: ActivationIdentifier;
     learningRate?: number;
     training: {
         epochs: number;
@@ -69,11 +67,15 @@ export class PairwiseLTR {
         // is_mature: EncodingInstruction.BOOLEAN,
     };
 
-    constructor(private encoding: EncodingKeys) {}
+    constructor(
+        public encoding: EncodingKeys,
+        private hyperOptions: LTRHyperOptions = {},
+        private options: LTROptions = {}
+    ) {}
 
     createEmbeddingLayer(numCategories: number) {
-        const embeddingDimension = this.options.embeddingLayerDimension
-            ? this.options.embeddingLayerDimension(numCategories)
+        const embeddingDimension = this.hyperOptions.embeddingLayerDimension
+            ? this.hyperOptions.embeddingLayerDimension(numCategories)
             : Math.ceil(Math.sqrt(numCategories));
 
         const embeddingLayer = tf.layers.embedding({
@@ -84,12 +86,9 @@ export class PairwiseLTR {
         return embeddingLayer;
     }
 
-    options: MLPOptions;
-
-    createModel(options: MLPOptions) {
-        this.options = options;
-
-        const { learningRate } = options;
+    createModel() {
+        const { learningRate, hiddenActivation, outputActivation } =
+            this.hyperOptions;
 
         // Embedding layers for the two streams in each pair
         const userEmbeddingLayer = this.createEmbeddingLayer(
@@ -152,7 +151,10 @@ export class PairwiseLTR {
             .apply(stream2Features) as tf.SymbolicTensor;
 
         // Dense layers to process the concatenated features
-        const denseLayer = tf.layers.dense({ units: 16, activation: "relu" });
+        const denseLayer = tf.layers.dense({
+            units: 16,
+            activation: hiddenActivation ?? "relu",
+        });
         const stream1Dense = denseLayer.apply(
             stream1Flattened
         ) as tf.SymbolicTensor;
@@ -166,7 +168,7 @@ export class PairwiseLTR {
 
         // Output layer to produce a single score
         const output = tf.layers
-            .dense({ units: 1, activation: "sigmoid" })
+            .dense({ units: 1, activation: outputActivation ?? "sigmoid" })
             .apply(subtracted) as tf.SymbolicTensor;
 
         // Create the model
@@ -188,19 +190,18 @@ export class PairwiseLTR {
         );
     }
 
+    trainingDatasetSize: number;
+
     async train(dataset: number[][], labels: number[][]) {
-        const { epochs, batchSize } = this.options.training;
+        this.trainingDatasetSize = dataset.length;
+        const { epochs, batchSize } = this.hyperOptions.training;
         const dataTensors = PairwiseLTR.convertDatasetToTensors(dataset);
         const labelsTensor = tf.tensor2d(labels);
-
-        // console.log("Training Oracle model...");
 
         await this.model.fit(dataTensors, labelsTensor, {
             epochs,
             batchSize,
         });
-
-        // console.log("Training Oracle model complete.");
     }
 
     predict(inputData: number[][]): tf.Tensor {
@@ -208,7 +209,7 @@ export class PairwiseLTR {
         return this.model.predict(inputTensors) as tf.Tensor;
     }
 
-    evaluate(dataset: number[][], labels: number[][]) {
+    async evaluate(dataset: number[][], labels: number[][]) {
         const testTensors = PairwiseLTR.convertDatasetToTensors(dataset);
         const labelsTensor = tf.tensor2d(labels);
 
@@ -217,29 +218,52 @@ export class PairwiseLTR {
             labelsTensor
         ) as tf.Tensor[];
 
-        return {
+        const results = {
             loss: loss.dataSync()[0],
             metric: metric.dataSync()[0],
         };
+
+        if (this.options.autoSave) {
+            const stats = await PairwiseLTR.getSavedModelStats();
+
+            if (!stats || results.loss < (stats?.loss ?? 100)) {
+                await this.saveModel(results.loss, this.trainingDatasetSize);
+                console.log("Saved Juicy Pear model to local storage.");
+            }
+        }
+
+        return results;
     }
 
-    toJSON() {
-        return { model: this.model.toJSON(), encoding: this.encoding };
+    async toJSON() {
+        const savedModel: any = await this.model.save(
+            tf.io.withSaveHandler(async (artifacts) => ({
+                modelArtifactsInfo: {
+                    dateSaved: new Date(),
+                    modelTopologyType: "JSON",
+                },
+                modelArtifacts: artifacts,
+            }))
+        );
+
+        return {
+            model: savedModel.modelArtifacts,
+            encoding: this.encoding,
+        };
     }
 
     static async fromJSON({
         model,
         encoding,
     }: {
-        model: string;
+        model: tf.io.ModelArtifacts;
         encoding: EncodingKeys;
     }): Promise<PairwiseLTR> {
-        const mlp = new PairwiseLTR(encoding);
-        mlp.model = await tf.loadLayersModel(
-            tf.io.fromMemory(JSON.parse(model))
-        );
+        const ltr = new PairwiseLTR(encoding);
 
-        return mlp;
+        ltr.model = await tf.loadLayersModel(tf.io.fromMemory(model));
+
+        return ltr;
     }
 
     scoreAndSortStreams(channelData: WatchStream[]): WatchStreamScored[] {
@@ -260,16 +284,8 @@ export class PairwiseLTR {
             })
         );
 
-        const tensors = PairwiseLTR.convertDatasetToTensors(pairs);
-
         // Make a prediction
-        const prediction = Array.from(
-            (this.model.predict(tensors) as tf.Tensor).dataSync()
-        );
-
-        // prediction.forEach((p) => console.log(p));
-
-        console.log(prediction);
+        const prediction = Array.from(this.predict(pairs).dataSync());
 
         const scores = [];
 
@@ -301,12 +317,12 @@ export class PairwiseLTR {
         }
     }
 
-    async saveModel(loss: number, options: MLPOptions, datasetSize: number) {
+    async saveModel(loss: number, datasetSize: number) {
         return Browser.storage.local.set({
             pearModel: {
-                model: this.toJSON(),
+                model: await this.toJSON(),
                 loss,
-                options,
+                options: this.hyperOptions,
                 datasetSize,
                 time: Date.now(),
             },
@@ -323,19 +339,21 @@ export class PairwiseLTR {
         const { model, loss, options, datasetSize, time } = data.pearModel;
 
         console.log(
-            `Loading Juicy Pear from local storage, with loss=${loss} options=${JSON.stringify(
-                options
-            )} datasetSize=${datasetSize}`
+            `Loading Juicy Pear from local storage, with loss=${loss.toFixed(
+                4
+            )} options=${JSON.stringify(options)} datasetSize=${datasetSize}`
         );
 
         return PairwiseLTR.fromJSON(model);
     }
 
     static async crossValidate(
-        options: MLPOptions,
+        hyperOptions: LTRHyperOptions,
         numFolds: number = 5,
         silent: boolean = false
     ) {
+        const startTime = moment();
+
         const samples = await WatchDataService.getData();
 
         // Create pairs
@@ -388,9 +406,9 @@ export class PairwiseLTR {
         let extra = [];
 
         // Limit the size of rawData
-        if (options?.maxTrainingSize > 0) {
+        if (hyperOptions?.maxTrainingSize > 0) {
             const breakpoint =
-                options.maxTrainingSize * (numFolds / (numFolds - 1));
+                hyperOptions.maxTrainingSize * (numFolds / (numFolds - 1));
             const shuffled = _(encodedPairs).shuffle().value();
             data = shuffled.slice(0, breakpoint);
             extra = shuffled.slice(breakpoint);
@@ -428,8 +446,8 @@ export class PairwiseLTR {
                 );
             }
 
-            const oracle = new PairwiseLTR(encoding);
-            oracle.createModel(options);
+            const oracle = new PairwiseLTR(encoding, {}, hyperOptions);
+            oracle.createModel();
 
             // eslint-disable-next-line no-await-in-loop
             await oracle.train(trainDataset, trainLabels);
@@ -440,7 +458,11 @@ export class PairwiseLTR {
                 );
             }
 
-            const { loss, metric } = oracle.evaluate(testDataset, testLabels);
+            // eslint-disable-next-line no-await-in-loop
+            const { loss, metric } = await oracle.evaluate(
+                testDataset,
+                testLabels
+            );
 
             totalLoss += loss;
             totalMetric += metric;
@@ -454,83 +476,17 @@ export class PairwiseLTR {
             console.log(`Cross-validation results (over ${numFolds} folds):`);
             console.log("Average loss:", averageLoss);
             console.log("Average metric:", averageMetric);
-        }
 
-        const stats = await PairwiseLTR.getSavedModelStats();
-
-        if (!stats || averageLoss < (stats?.loss ?? 100)) {
-            await model.saveModel(averageLoss, options, data.length);
-            console.log("Saved Juicy Pear model to local storage.");
+            console.log(
+                `Cross validation completed in ${moment().diff(
+                    startTime,
+                    "seconds"
+                )} seconds.`
+            );
         }
 
         return averageLoss;
         // return model;
-    }
-
-    static async hyperparameterTuning(
-        startingOptions: MLPOptions
-    ): Promise<MLPOptions> {
-        // options example
-        // {
-        //     hiddenLayerSizes: [64],
-        //     outputSize: 1,
-        //     training: {
-        //         epochs: 10,
-        //         batchSize: 4,
-        //     },
-        //     learningRate: 0.001,
-        //     maxTrainingSize: 500,
-        // }
-
-        let bestOptions: MLPOptions = { ...startingOptions };
-        let bestLoss = Number.MAX_VALUE;
-
-        // Define your search space and tuning strategy here
-        // Example: modify learning rate and batch size
-        const learningRates = [
-            startingOptions.learningRate * 0.666,
-            startingOptions.learningRate * 1.0,
-            startingOptions.learningRate * 1.333,
-        ];
-        const batchSizes = [
-            startingOptions.training.batchSize * 0.5,
-            startingOptions.training.batchSize,
-            startingOptions.training.batchSize * 2,
-        ];
-        const totalAttempts = learningRates.length * batchSizes.length;
-        let attempt = 1;
-
-        for (const learningRate of learningRates) {
-            for (const batchSize of batchSizes) {
-                const currentOptions = {
-                    ...bestOptions,
-                    learningRate,
-                    training: {
-                        ...bestOptions.training,
-                        batchSize,
-                    },
-                };
-
-                console.log(
-                    `Starting hypertuning attempt ${attempt++} of ${totalAttempts}...`
-                );
-
-                // eslint-disable-next-line no-await-in-loop
-                const currentLoss = await PairwiseLTR.crossValidate(
-                    currentOptions,
-                    5,
-                    true
-                );
-
-                if (currentLoss < bestLoss) {
-                    bestLoss = currentLoss;
-                    bestOptions = currentOptions;
-                }
-            }
-        }
-
-        console.log("Best loss:", bestLoss);
-        return bestOptions;
     }
 
     static composeDataset(data: number[][]): {
@@ -543,7 +499,14 @@ export class PairwiseLTR {
         };
     }
 
-    static async newModel(options: MLPOptions): Promise<PairwiseLTR> {
+    static async newModel(hyperOptions: LTRHyperOptions): Promise<PairwiseLTR> {
+        console.log(
+            `Training Juicy pear with options=${JSON.stringify(
+                hyperOptions
+            )}...`
+        );
+
+        const { maxTrainingSize } = hyperOptions;
         const samples = await WatchDataService.getData();
 
         // Create pairs
@@ -594,42 +557,33 @@ export class PairwiseLTR {
 
         let data = encodedPairs;
         let testing;
-        let extra = [];
 
         // Limit the size of rawData
-        if (options?.maxTrainingSize > 0) {
+        if ((maxTrainingSize ?? 0) > 0) {
             const shuffled = _(encodedPairs).shuffle().value();
-            data = shuffled.slice(0, options.maxTrainingSize);
-            testing = shuffled.slice(options.maxTrainingSize);
+            data = shuffled.slice(0, maxTrainingSize);
+            testing = shuffled.slice(maxTrainingSize);
         }
 
         const { dataset, labels } = PairwiseLTR.composeDataset(data);
 
-        const model = new PairwiseLTR(encoding);
-        model.createModel(options);
+        const model = new PairwiseLTR(encoding, {}, hyperOptions);
+        model.createModel();
+
         await model.train(dataset, labels);
 
         const { dataset: dataset2, labels: labels2 } =
             PairwiseLTR.composeDataset(testing);
 
-        const results = model.evaluate(dataset2, labels2);
+        const results = await model.evaluate(dataset2, labels2);
 
         console.log(results);
-
-        const stats = await PairwiseLTR.getSavedModelStats();
-
-        if (!stats || results.loss < (stats?.loss ?? 100)) {
-            await model.saveModel(results.loss, options, data.length);
-            console.log("Saved Juicy Pear model to local storage.");
-        }
 
         return model;
     }
 }
 
-console.log("loading oracle.ts");
-
-// export const JuicyPearService = PairwiseLTR.newModel({
+// export const JuicyPearService = PairwiseLTR.crossValidate({
 //     hiddenLayerSizes: [32],
 //     outputSize: 1,
 //     training: {
@@ -637,20 +591,20 @@ console.log("loading oracle.ts");
 //         batchSize: 4,
 //     },
 //     learningRate: 0.001,
-//     maxTrainingSize: 25600,
-// });
+//     maxTrainingSize: 4096,
+// }).then(() => PairwiseLTR.loadModel());
 
-// export const JuicyPearService = PairwiseLTR.crossValidate(
-// {
-//     hiddenLayerSizes: [32],
-//     outputSize: 1,
-//     training: {
-//         epochs: 10,
-//         batchSize: 4,
+// export const JuicyPearService = PairwiseLTR.newModel(
+//     {
+//         hiddenLayerSizes: [32],
+//         outputSize: 1,
+//         training: {
+//             epochs: 10,
+//             batchSize: 4,
+//         },
+//         learningRate: 0.001,
+//         maxTrainingSize: 200,
 //     },
-//     learningRate: 0.001,
-//     maxTrainingSize: 100,
-// }
 // );
 
 // {
@@ -682,3 +636,18 @@ console.log("loading oracle.ts");
 //     });
 
 export const JuicyPearService = PairwiseLTR.loadModel();
+
+// (async () => {
+//     const jps = await JuicyPearService;
+
+//     console.log(jps.encoding);
+
+//     const input = [
+//         [1, 2, 3, 4],
+//         [5, 6, 7, 8],
+//         [9, 10, 11, 12],
+//     ];
+//     const output = jps.predict(input);
+
+//     console.log("prediction", input, output.dataSync());
+// })();

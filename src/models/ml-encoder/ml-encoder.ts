@@ -224,6 +224,12 @@ export class MachineLearningEncoder {
                 encodingKey.encodingType === EncodingInstruction.CATEGORY_INDEX
             ) {
                 encodedEntry[key] = encodingKey.categories.indexOf(entry[key]);
+
+                if (encodedEntry[key] === -1) {
+                    console.error(
+                        `Failed to encode '${key}' with value '${entry[key]}'.`
+                    );
+                }
             } else if (
                 typeof encodingKey === "object" &&
                 !Array.isArray(encodingKey)
