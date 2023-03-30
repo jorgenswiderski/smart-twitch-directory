@@ -69,7 +69,14 @@ export class PairwiseLTR {
 
     constructor(
         public encoding: EncodingKeys,
-        private hyperOptions: LTRHyperOptions = {},
+        private hyperOptions: LTRHyperOptions = {
+            hiddenLayerSizes: [16],
+            outputSize: 1,
+            training: {
+                epochs: 10,
+                batchSize: 4,
+            },
+        },
         private options: LTROptions = {}
     ) {}
 
@@ -446,7 +453,7 @@ export class PairwiseLTR {
                 );
             }
 
-            const oracle = new PairwiseLTR(encoding, {}, hyperOptions);
+            const oracle = new PairwiseLTR(encoding, hyperOptions);
             oracle.createModel();
 
             // eslint-disable-next-line no-await-in-loop
@@ -499,7 +506,10 @@ export class PairwiseLTR {
         };
     }
 
-    static async newModel(hyperOptions: LTRHyperOptions): Promise<PairwiseLTR> {
+    static async newModel(
+        hyperOptions: LTRHyperOptions,
+        options: LTROptions = {}
+    ): Promise<PairwiseLTR> {
         console.log(
             `Training Juicy pear with options=${JSON.stringify(
                 hyperOptions
@@ -567,7 +577,7 @@ export class PairwiseLTR {
 
         const { dataset, labels } = PairwiseLTR.composeDataset(data);
 
-        const model = new PairwiseLTR(encoding, {}, hyperOptions);
+        const model = new PairwiseLTR(encoding, hyperOptions, options);
         model.createModel();
 
         await model.train(dataset, labels);
