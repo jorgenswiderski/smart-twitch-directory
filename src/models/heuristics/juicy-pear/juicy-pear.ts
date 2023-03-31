@@ -2,18 +2,32 @@ import * as tf from "@tensorflow/tfjs";
 import moment from "moment";
 import Browser from "webextension-polyfill";
 
-import { EncodingKeys } from "../../ml-encoder/ml-encoder";
+import {
+    EncodingInstruction,
+    EncodingKeys,
+    EncodingMeanInputs,
+} from "../../ml-encoder/ml-encoder";
 import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
 import { LtrPreprocessor } from "./preprocessor";
 
-interface LTRModelStats {
+export interface LTRModelStats {
     loss: number;
     options: LTRHyperOptions;
-    datasetSize: number;
+    datasetSize: {
+        total: number;
+        training: number;
+    };
     time: number;
+}
+
+export interface LTRModelInfo extends LTRModelStats {
+    model: {
+        model: any;
+        encoding: EncodingKeys;
+    };
 }
 
 type ActivationIdentifier =
@@ -57,6 +71,11 @@ export class PairwiseLTR {
 
     hyperOptions: LTRHyperOptions;
 
+    datasetSize: {
+        training?: number;
+        total?: number;
+    } = {};
+
     constructor(
         public encoding: EncodingKeys,
         hyperOptions: LTRHyperOptions = {},
@@ -78,13 +97,14 @@ export class PairwiseLTR {
         };
     }
 
-    createEmbeddingLayer(numCategories: number) {
+    createEmbeddingLayer(numCategories: number, layerName: string) {
         const embeddingDimension =
             this.hyperOptions.embeddingLayerDimension(numCategories);
 
         const embeddingLayer = tf.layers.embedding({
             inputDim: numCategories,
             outputDim: embeddingDimension,
+            name: layerName,
         });
 
         return embeddingLayer;
@@ -103,10 +123,12 @@ export class PairwiseLTR {
 
         // Create embedding layers
         const userEmbeddingLayer = this.createEmbeddingLayer(
-            (this.encoding as any).user_id.categories.length
+            (this.encoding as any).user_id.categories.length,
+            "user_id"
         );
         const gameEmbeddingLayer = this.createEmbeddingLayer(
-            (this.encoding as any).game_id.categories.length
+            (this.encoding as any).game_id.categories.length,
+            "game_id"
         );
 
         // Create input layers
@@ -171,16 +193,14 @@ export class PairwiseLTR {
 
         this.model.compile({
             optimizer: tf.train.adam(learningRate),
-            loss: loss || "binaryCrossentropy",
-            metrics: metrics || ["accuracy"],
+            loss,
+            metrics,
         });
     }
 
-    trainingDatasetSize: number;
-
     async train(x: number[][], y: number[][]) {
         // Save the training set size, so we can capture it later if we save the model
-        this.trainingDatasetSize = x.length;
+        this.datasetSize.training = x.length;
 
         const { epochs, batchSize } = this.hyperOptions;
         const dataTensors = PairwiseLTR.convertDatasetToTensors(x);
@@ -204,7 +224,7 @@ export class PairwiseLTR {
             const stats = await PairwiseLTR.getSavedModelStats();
 
             if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
-                await this.saveModel(results.loss, this.trainingDatasetSize);
+                await this.saveModel(results.loss);
                 console.log("Saved Juicy Pear model to local storage.");
             }
         }
@@ -267,14 +287,33 @@ export class PairwiseLTR {
         return data[PairwiseLTR.modelName];
     }
 
+    // FIXME
     static async getSavedModelStats(): Promise<LTRModelStats | null> {
-        const { loss, options, datasetSize, time } =
-            await PairwiseLTR.getStorage();
+        try {
+            // FIXME: throws on undefined
+            const { loss, options, datasetSize, time } =
+                await PairwiseLTR.getStorage();
 
-        return { loss, options, datasetSize, time };
+            return { loss, options, datasetSize, time };
+        } catch (err) {
+            console.log(err);
+        }
     }
 
-    async saveModel(loss: number, datasetSize: number) {
+    // FIXME
+    static async getSavedModelInfo(): Promise<LTRModelInfo | null> {
+        try {
+            // FIXME: throws on undefined
+            const { loss, options, datasetSize, time, model } =
+                await PairwiseLTR.getStorage();
+
+            return { loss, options, datasetSize, time, model };
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    async saveModel(loss: number) {
         return Browser.storage.local.set({
             [PairwiseLTR.modelName]: {
                 model: await this.toJSON(),
@@ -284,25 +323,29 @@ export class PairwiseLTR {
                     embeddingLayerDimension:
                         this.hyperOptions.embeddingLayerDimension.toString(),
                 },
-                datasetSize,
+                datasetSize: this.datasetSize,
                 time: Date.now(),
             },
         });
     }
 
+    // FIXME
     static async loadModel(): Promise<PairwiseLTR | null> {
-        const { model, loss, hyperOptions, datasetSize } =
-            await PairwiseLTR.getStorage();
+        try {
+            // FIXME: throws on undefined
+            const { model, loss, hyperOptions, datasetSize } =
+                await PairwiseLTR.getStorage();
 
-        console.log(
-            `Loading Juicy Pear from local storage, with loss=${loss.toFixed(
-                4
-            )} hOptions=${JSON.stringify(
-                hyperOptions
-            )} datasetSize=${datasetSize}`
-        );
+            console.log(`Loading Juicy Pear from local storage...`, {
+                datasetSize,
+                loss: Number(loss.toFixed(4)),
+                hyperOptions,
+            });
 
-        return PairwiseLTR.fromJSON(model);
+            return PairwiseLTR.fromJSON(model);
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     static convertDatasetToTensors(dataset: number[][]): tf.Tensor[] {
@@ -311,9 +354,42 @@ export class PairwiseLTR {
         );
     }
 
+    getEmbeddingMeanInput(name: string): number {
+        // Access the embedding layer
+        const embeddingLayer = this.model.getLayer(name);
+
+        // Get the layer's weights (embeddings)
+        const embeddings = embeddingLayer.getWeights()[0];
+
+        // Compute the mean embedding
+        const meanTensor = tf.mean(embeddings, 0);
+
+        // Convert to number
+        return meanTensor.dataSync()[0];
+    }
+
+    getEmbeddingMeanInputs() {
+        const meanInputs: EncodingMeanInputs = {};
+
+        Object.entries(this.encoding).forEach(([key, instruction]) => {
+            if (
+                instruction.encodingType === EncodingInstruction.CATEGORY_INDEX
+            ) {
+                meanInputs[key] = this.getEmbeddingMeanInput(key);
+            }
+        });
+
+        return meanInputs;
+    }
+
     scoreAndSortStreams(streams: WatchStream[]): WatchStreamScored[] {
         // Prepare inputs
-        const x = LtrPreprocessor.encodeWatchSample(streams, this.encoding);
+        const meanInputs = this.getEmbeddingMeanInputs();
+        const x = LtrPreprocessor.encodeWatchSample(
+            streams,
+            this.encoding,
+            meanInputs
+        );
 
         const predictions = Array.from(this.predict(x).dataSync());
 
@@ -393,6 +469,7 @@ export class PairwiseLTR {
 
             const pear = new PairwiseLTR(encoding, hyperOptions, options);
             pear.createModel();
+            pear.datasetSize.total = data.x.length + extraTraining.x.length;
 
             // eslint-disable-next-line no-await-in-loop
             await pear.train(trainData.x, trainData.y);

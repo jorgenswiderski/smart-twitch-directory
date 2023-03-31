@@ -18,6 +18,10 @@ export interface EncodingKeys {
     [key: string]: Encoding | EncodingKeys;
 }
 
+export interface EncodingMeanInputs {
+    [key: string]: number;
+}
+
 interface EncodingBase {
     encodingType: EncodingInstruction;
 }
@@ -171,7 +175,8 @@ export class MachineLearningEncoder {
 
     static encodeEntry(
         entry: Record<string, any>,
-        encodingKeys: EncodingKeys
+        encodingKeys: EncodingKeys,
+        meanInputs?: EncodingMeanInputs
     ): Record<string, number> {
         const encodedEntry: Record<string, number> = {};
 
@@ -229,6 +234,11 @@ export class MachineLearningEncoder {
                     console.error(
                         `Failed to encode '${key}' with value '${entry[key]}'.`
                     );
+
+                    if (meanInputs?.[key]) {
+                        // Set the input to the average value. This should make the model interpret this input as "neutral."
+                        encodedEntry[key] = meanInputs[key];
+                    }
                 }
             } else if (
                 typeof encodingKey === "object" &&

@@ -2,6 +2,7 @@ import { CONSTANTS } from "../../constants";
 import {
     EncodingInstruction,
     EncodingKeys,
+    EncodingMeanInputs,
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
 import { Util } from "../../util";
@@ -336,10 +337,13 @@ export class LtrPreprocessor {
 
     static encodeWatchSample(
         streams: WatchStream[],
-        encoding: EncodingKeys
+        encoding: EncodingKeys,
+        meanInputs: EncodingMeanInputs
     ): number[][] {
         const encoded = streams.map((stream) =>
-            Object.values(MachineLearningEncoder.encodeEntry(stream, encoding))
+            Object.values(
+                MachineLearningEncoder.encodeEntry(stream, encoding, meanInputs)
+            )
         );
 
         // Create pairs
