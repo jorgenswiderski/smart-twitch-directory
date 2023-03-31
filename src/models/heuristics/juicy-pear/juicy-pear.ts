@@ -531,6 +531,7 @@ export class PairwiseLTR {
 
         const model = new PairwiseLTR(encoding, hyperOptions, options);
         model.createModel();
+        model.datasetSize.total = training.x.length + testing.x.length;
 
         console.log(
             `Training Juicy pear with options=${JSON.stringify(

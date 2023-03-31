@@ -28,7 +28,6 @@ export function ChannelsGrid() {
             if (response) {
                 const channelData = response.data.data;
                 const scored = (await HeuristicService()).scoreAndSortStreams(channelData);
-                // const scored = TotemPoleService.scoreAndSortStreams(channelData);
                 setChannels(scored);
             }
         } catch (err) {

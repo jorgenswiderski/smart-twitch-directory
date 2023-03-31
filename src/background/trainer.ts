@@ -59,12 +59,22 @@ function isDatasetMuchBigger(
     { datasetSize: { total: cachedLength } }: LTRModelStats,
     newLength
 ): boolean {
-    return newLength / 2 >= cachedLength;
+    return !cachedLength || !newLength || newLength / 2 >= cachedLength;
 }
 
 async function checkModel() {
     try {
         const info = await PairwiseLTR.getSavedModelInfo();
+
+        const {
+            encoding,
+            data: { training: data },
+        } = await LtrPreprocessor.getWatchData({ trainingPercent: 1 });
+
+        if (data.x.length < 64) {
+            // Not enough data yet, fallback to a non-ML model.
+            return;
+        }
 
         if (!info) {
             console.log("No Juicy Pear is cached, training a fresh one...");
@@ -73,11 +83,6 @@ async function checkModel() {
         }
 
         const ageInHours = getModelAgeInHours(info);
-
-        const {
-            encoding,
-            data: { training: data },
-        } = await LtrPreprocessor.getWatchData({ trainingPercent: 1 });
 
         if (ageInHours > 1 && !modelHasCompleteEncoding(info, encoding)) {
             console.log(
