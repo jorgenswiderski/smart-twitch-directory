@@ -342,7 +342,7 @@ export class PairwiseLTR {
                 hyperOptions,
             });
 
-            return PairwiseLTR.fromJSON(model);
+            return await PairwiseLTR.fromJSON(model);
         } catch (err) {
             console.log(err);
         }

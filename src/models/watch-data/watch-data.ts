@@ -98,7 +98,7 @@ class WatchData {
     }
 
     async waitForData() {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             setInterval(() => {
                 if (this.data && this.data.length > 0) {
                     resolve();

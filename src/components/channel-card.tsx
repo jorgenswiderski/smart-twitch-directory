@@ -1,68 +1,6 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
 
-function Thumbnail({ data, width = 320, height = 180 }) {
-  const url = useMemo(() => data.thumbnail_url
-    .replace('{width}', width)
-    .replace('{height}', height), [data.thumbnail_url, width, height]);
-
-  const countText = useMemo(() => {
-    if (data.viewer_count >= 100000) {
-      return `${(data.viewer_count / 1000).toFixed(0)}K`;
-    } if (data.viewer_count >= 1000) {
-      return `${(data.viewer_count / 1000).toFixed(1)}K`;
-    }
-    return `${data.viewer_count}`;
-  }, [data.viewer_count]);
-
-  return (
-    <a href={`https://twitch.tv/${data.user_login}`}>
-      <ThumbnailContainer>
-        <ChannelImage src={url} alt={data.title} />
-        <LiveIndicator>LIVE</LiveIndicator>
-        <ViewerText>
-          {countText}
-          {' '}
-          viewers
-        </ViewerText>
-        <ScoreText>{`${(data.score * 100).toFixed(0)}%`}</ScoreText>
-      </ThumbnailContainer>
-    </a>
-  );
-}
-
-export function ChannelCard({ data, key }) {
-  return (
-    <ChannelContainer>
-      <Thumbnail data={data} />
-      <Details>
-        <a href={`https://twitch.tv/${data.user_login}/videos`}>
-          <Avatar
-            src={data.avatar_url}
-            alt={`${data.user_name}'s avatar`}
-          />
-        </a>
-        <Info>
-          <a
-            href={`https://twitch.tv/${data.user_login}`}
-            title={data.title}
-          >
-            <TitleText>{data.title}</TitleText>
-          </a>
-          <a href={`https://twitch.tv/${data.user_login}`}>
-            <NameText>{data.user_name}</NameText>
-          </a>
-          <a
-            href={`https://twitch.tv/directory/game/${data.game_name}`}
-          >
-            <CategoryText>{data.game_name}</CategoryText>
-          </a>
-        </Info>
-      </Details>
-    </ChannelContainer>
-  );
-}
-
 const ChannelContainer = styled.div`
     display: flex;
     flex-direction: column;
@@ -154,3 +92,66 @@ const TitleText = styled(InfoText)`
 const NameText = styled(InfoText)``;
 
 const CategoryText = styled(InfoText)``;
+
+
+function Thumbnail({ data, width = 320, height = 180 }) {
+  const url = useMemo(() => data.thumbnail_url
+    .replace('{width}', width)
+    .replace('{height}', height), [data.thumbnail_url, width, height]);
+
+  const countText = useMemo(() => {
+    if (data.viewer_count >= 100000) {
+      return `${(data.viewer_count / 1000).toFixed(0)}K`;
+    } if (data.viewer_count >= 1000) {
+      return `${(data.viewer_count / 1000).toFixed(1)}K`;
+    }
+    return `${data.viewer_count}`;
+  }, [data.viewer_count]);
+
+  return (
+    <a href={`https://twitch.tv/${data.user_login}`}>
+      <ThumbnailContainer>
+        <ChannelImage src={url} alt={data.title} />
+        <LiveIndicator>LIVE</LiveIndicator>
+        <ViewerText>
+          {countText}
+          {' '}
+          viewers
+        </ViewerText>
+        <ScoreText>{`${(data.score * 100).toFixed(0)}%`}</ScoreText>
+      </ThumbnailContainer>
+    </a>
+  );
+}
+
+export function ChannelCard({ data, key }) {
+  return (
+    <ChannelContainer>
+      <Thumbnail data={data} />
+      <Details>
+        <a href={`https://twitch.tv/${data.user_login}/videos`}>
+          <Avatar
+            src={data.avatar_url}
+            alt={`${data.user_name}'s avatar`}
+          />
+        </a>
+        <Info>
+          <a
+            href={`https://twitch.tv/${data.user_login}`}
+            title={data.title}
+          >
+            <TitleText>{data.title}</TitleText>
+          </a>
+          <a href={`https://twitch.tv/${data.user_login}`}>
+            <NameText>{data.user_name}</NameText>
+          </a>
+          <a
+            href={`https://twitch.tv/directory/game/${data.game_name}`}
+          >
+            <CategoryText>{data.game_name}</CategoryText>
+          </a>
+        </Info>
+      </Details>
+    </ChannelContainer>
+  );
+}
