@@ -19,6 +19,21 @@ interface LtrData {
     y: number[][];
 }
 
+interface SamplerStats {
+    streamers: {
+        [key: number]: {
+            all: number;
+            positive: number;
+        };
+    };
+    categories: {
+        [key: number]: {
+            all: number;
+            positive: number;
+        };
+    };
+}
+
 export class LtrPreprocessor {
     static encodingInstructions = {
         user_id: EncodingInstruction.CATEGORY_INDEX,
@@ -49,6 +64,178 @@ export class LtrPreprocessor {
             x: [...a.x, ...b.x],
             y: [...a.y, ...b.y],
         };
+    }
+
+    static calculateStats(
+        data: number[][],
+        uniqueStreamers: number[],
+        uniqueCategories: number[]
+    ): SamplerStats {
+        const streamers: {
+            [key: number]: { positive: number[][]; negative: number[][] };
+        } = {};
+        uniqueStreamers.forEach((id) => {
+            streamers[id] = {
+                positive: [],
+                negative: [],
+            };
+        });
+
+        const categories: {
+            [key: number]: { positive: number[][]; negative: number[][] };
+        } = {};
+        uniqueCategories.forEach((id) => {
+            categories[id] = {
+                positive: [],
+                negative: [],
+            };
+        });
+
+        data.forEach((entry) => {
+            streamers[entry[0]].positive.push(entry);
+            streamers[entry[2]].negative.push(entry);
+            categories[entry[1]].positive.push(entry);
+            categories[entry[3]].negative.push(entry);
+        });
+
+        const stats: SamplerStats = {
+            streamers: {},
+            categories: {},
+        };
+
+        Object.entries(streamers).forEach(([id, { positive, negative }]) => {
+            stats.streamers[id] = {
+                all: (positive.length + negative.length) / data.length,
+                positive: positive.length / data.length,
+            };
+        });
+
+        Object.entries(categories).forEach(([id, { positive, negative }]) => {
+            stats.categories[id] = {
+                all: (positive.length + negative.length) / data.length,
+                positive: positive.length / data.length,
+            };
+        });
+
+        return stats;
+    }
+
+    static getNetScores(
+        type: "streamers" | "categories",
+        stats: SamplerStats,
+        currentStats: SamplerStats,
+        mode: "all" | "positive" = "all"
+    ) {
+        return Object.entries(currentStats[type])
+            .map(([id, entityStats]) => {
+                const currentScore = entityStats[mode];
+                const targetScore = stats[type][id][mode];
+                const netScore = targetScore - currentScore;
+
+                return { id, score: netScore };
+            })
+            .sort((a, b) => b.score - a.score);
+    }
+
+    static buildRepresentativeSample(
+        data: number[][],
+        size: number,
+        seed: number
+    ) {
+        const uniqueStreamers = Array.from(
+            new Set(data.map((entry) => [entry[0], entry[2]]).flat())
+        ).sort();
+        const uniqueCategories = Array.from(
+            new Set(data.map((entry) => [entry[1], entry[3]]).flat())
+        ).sort();
+
+        const stats = this.calculateStats(
+            data,
+            uniqueStreamers,
+            uniqueCategories
+        );
+        const pool: number[][] = Util.shuffleArray(
+            JSON.parse(JSON.stringify(data)),
+            seed
+        );
+        const sample: number[][] = [];
+
+        const searchKeys = {
+            positive: {
+                streamers: 0,
+                categories: 1,
+            },
+            negative: {
+                streamers: 2,
+                categories: 3,
+            },
+        };
+
+        for (let i = 0; i < size; i += 1) {
+            const currentStats = this.calculateStats(
+                sample,
+                uniqueStreamers,
+                uniqueCategories
+            );
+
+            const streamScores = this.getNetScores(
+                "streamers",
+                stats,
+                currentStats
+            );
+            const catScores = this.getNetScores(
+                "categories",
+                stats,
+                currentStats
+            );
+
+            const pickType =
+                streamScores[0].score > catScores[0].score
+                    ? "streamers"
+                    : "categories";
+            const id = Number(
+                streamScores[0].score > catScores[0].score
+                    ? streamScores[0].id
+                    : catScores[0].id
+            );
+
+            const polarity =
+                currentStats[pickType][id].positive <
+                stats[pickType][id].positive
+                    ? "positive"
+                    : "negative";
+
+            const searchIndex = searchKeys[polarity][pickType];
+
+            const entryIdx = pool.findIndex(
+                (entry) => entry[searchIndex] === id
+            );
+            const entry = pool.splice(entryIdx, 1)[0];
+            sample.push(entry);
+
+            // if (sample.length % 100 === 0) {
+            //     console.log(`${sample.length} of ${size}...`);
+            // }
+        }
+
+        // Calculate the MSE
+        // const currentStats = this.calculateStats(
+        //     sample,
+        //     uniqueStreamers,
+        //     uniqueCategories
+        // );
+
+        // const squares = [
+        //     ...this.getNetScores("streamers", stats, currentStats),
+        //     ...this.getNetScores("categories", stats, currentStats),
+        //     ...this.getNetScores("streamers", stats, currentStats, "positive"),
+        //     ...this.getNetScores("categories", stats, currentStats, "positive"),
+        // ].map((entry) => entry.score ** 2);
+        // const mse = squares.reduce((sum, a) => sum + a, 0);
+
+        // console.log(`MSE: ${mse}`);
+
+        return [sample, pool];
     }
 
     static async getWatchData({
@@ -118,9 +305,25 @@ export class LtrPreprocessor {
             encodedPairs.length
         );
 
-        const shuffled = Util.shuffleArray(encodedPairs, seed);
-        const training = shuffled.slice(0, trainingLimit);
-        const testing = shuffled.slice(trainingLimit);
+        let training = [];
+        let testing = [];
+
+        if (trainingLimit < encodedPairs.length) {
+            if (CONSTANTS.HEURISTICS.JUICY_PEAR.RANDOM_SAMPLE) {
+                const shuffled = Util.shuffleArray(encodedPairs, seed);
+                training = shuffled.slice(0, trainingLimit);
+                testing = shuffled.slice(trainingLimit);
+            } else {
+                [training, testing] = LtrPreprocessor.buildRepresentativeSample(
+                    encodedPairs,
+                    trainingLimit,
+                    seed
+                );
+            }
+        } else {
+            training = Util.shuffleArray(encodedPairs, seed);
+            testing = [];
+        }
 
         return {
             data: {

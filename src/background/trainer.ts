@@ -35,19 +35,18 @@ async function main() {
 
 main();
 
-// 0.0353
-PairwiseLTR.crossValidate(
-    {
-        hiddenLayerSizes: [16],
-        maxTrainingSize: 8192,
-        batchSize: 16,
-    },
-    {
-        autoSave: true,
-    }
-).catch((err) => {
-    console.error(err);
-});
+// PairwiseLTR.crossValidate(
+//     {
+//         hiddenLayerSizes: [16],
+//         maxTrainingSize: 2048,
+//         batchSize: 16,
+//     },
+//     {
+//         autoSave: true,
+//     }
+// ).catch((err) => {
+//     console.error(err);
+// });
 
 // MLP.hyperparameterTuning({
 //     hiddenLayerSizes: [48],
