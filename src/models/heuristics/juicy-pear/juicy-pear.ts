@@ -546,18 +546,3 @@ export class PairwiseLTR {
         return model;
     }
 }
-
-// export const JuicyPearService = PairwiseLTR.newModel(
-//     {
-//         hiddenLayerSizes: [32],
-//         outputSize: 1,
-//         training: {
-//             epochs: 10,
-//             batchSize: 4,
-//         },
-//         learningRate: 0.001,
-//         maxTrainingSize: 200,
-//     },
-// );
-
-export const JuicyPearService = PairwiseLTR.loadModel();

@@ -73,7 +73,6 @@ async function checkModel() {
         }
 
         const ageInHours = getModelAgeInHours(info);
-        console.log("age", ageInHours);
 
         const {
             encoding,

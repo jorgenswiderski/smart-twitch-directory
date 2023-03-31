@@ -3,8 +3,8 @@ import styled from "styled-components";
 // import { TailSpin } from "react-loader-spinner";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
-import { JuicyPearService } from "../models/heuristics/juicy-pear/juicy-pear";
 import { TotemPoleService } from "../models/heuristics/totem-pole";
+import { JuicyPearService } from "../models/heuristics/juicy-pear/loader";
 
 const GridContainer = styled.div`
     display: grid;
