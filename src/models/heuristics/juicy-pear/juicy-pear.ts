@@ -1,12 +1,8 @@
-import * as _ from "lodash";
 import * as tf from "@tensorflow/tfjs";
 import moment from "moment";
 import Browser from "webextension-polyfill";
 
-import {
-    EncodingKeys,
-    MachineLearningEncoder,
-} from "../../ml-encoder/ml-encoder";
+import { EncodingKeys } from "../../ml-encoder/ml-encoder";
 import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
@@ -59,20 +55,32 @@ export class PairwiseLTR {
 
     static modelName: "juicy-pear";
 
-    preprocessor: LtrPreprocessor;
+    hyperOptions: LTRHyperOptions;
 
     constructor(
         public encoding: EncodingKeys,
-        public hyperOptions: LTRHyperOptions = {},
+        hyperOptions: LTRHyperOptions = {},
         public options: LTROptions = {}
     ) {
-        this.preprocessor = new LtrPreprocessor(this);
+        this.hyperOptions = {
+            hiddenLayerSizes: [16],
+            outputSize: 1,
+            hiddenActivation: "relu",
+            outputActivation: "sigmoid",
+            learningRate: 0.001,
+            epochs: 10,
+            batchSize: 4,
+            embeddingLayerDimension: (numCategories: number) =>
+                Math.ceil(Math.sqrt(numCategories)),
+            loss: "binaryCrossentropy",
+            metrics: ["accuracy"],
+            ...hyperOptions,
+        };
     }
 
     createEmbeddingLayer(numCategories: number) {
-        const embeddingDimension = this.hyperOptions.embeddingLayerDimension
-            ? this.hyperOptions.embeddingLayerDimension(numCategories)
-            : Math.ceil(Math.sqrt(numCategories));
+        const embeddingDimension =
+            this.hyperOptions.embeddingLayerDimension(numCategories);
 
         const embeddingLayer = tf.layers.embedding({
             inputDim: numCategories,
@@ -129,10 +137,10 @@ export class PairwiseLTR {
         ].map((tensor) => tf.layers.flatten().apply(tensor));
 
         // Create hidden layers
-        const hiddenLayers = (hiddenLayerSizes ?? [16]).map((units) =>
+        const hiddenLayers = hiddenLayerSizes.map((units) =>
             tf.layers.dense({
                 units,
-                activation: hiddenActivation ?? "relu",
+                activation: hiddenActivation,
             })
         );
 
@@ -150,8 +158,8 @@ export class PairwiseLTR {
         // Create output layer
         const output = tf.layers
             .dense({
-                units: outputSize ?? 1,
-                activation: outputActivation ?? "sigmoid",
+                units: outputSize,
+                activation: outputActivation,
             })
             .apply(subtracted) as tf.SymbolicTensor;
 
@@ -162,7 +170,7 @@ export class PairwiseLTR {
         });
 
         this.model.compile({
-            optimizer: tf.train.adam(learningRate || 0.001),
+            optimizer: tf.train.adam(learningRate),
             loss: loss || "binaryCrossentropy",
             metrics: metrics || ["accuracy"],
         });
@@ -179,8 +187,8 @@ export class PairwiseLTR {
         const labelsTensor = tf.tensor2d(y);
 
         await this.model.fit(dataTensors, labelsTensor, {
-            epochs: epochs ?? 10,
-            batchSize: batchSize ?? 4,
+            epochs,
+            batchSize,
         });
     }
 
@@ -216,7 +224,7 @@ export class PairwiseLTR {
             metric: metric.dataSync()[0],
         };
 
-        this.autoSave(results);
+        await this.autoSave(results);
 
         return results;
     }
@@ -271,7 +279,11 @@ export class PairwiseLTR {
             [PairwiseLTR.modelName]: {
                 model: await this.toJSON(),
                 loss,
-                hyperOptions: this.hyperOptions,
+                hyperOptions: {
+                    ...this.hyperOptions,
+                    embeddingLayerDimension:
+                        this.hyperOptions.embeddingLayerDimension.toString(),
+                },
                 datasetSize,
                 time: Date.now(),
             },
@@ -328,16 +340,27 @@ export class PairwiseLTR {
 
     static async crossValidate(
         hyperOptions: LTRHyperOptions,
+        options: LTROptions = {},
         numFolds: number = 5,
         silent: boolean = false,
         seed: number = 42
     ) {
+        if (!silent) {
+            console.log(`Cross validating Juicy Pear...`, {
+                numFolds,
+                seed,
+                hyperOptions,
+            });
+        }
+
         const startTime = moment();
+        const { maxTrainingSize } = hyperOptions;
 
         const {
             data: { training: data, testing: extraTraining },
             encoding,
         } = await LtrPreprocessor.getWatchData({
+            maxTrainingSize: maxTrainingSize * (numFolds / (numFolds - 1)),
             trainingPercent: 1,
             seed,
         });
@@ -346,6 +369,7 @@ export class PairwiseLTR {
 
         let totalLoss = 0;
         let totalMetric = 0;
+        let model;
 
         for (let i = 0; i < numFolds; i += 1) {
             const testStart = i * chunkSize;
@@ -367,7 +391,7 @@ export class PairwiseLTR {
                 );
             }
 
-            const pear = new PairwiseLTR(encoding, hyperOptions);
+            const pear = new PairwiseLTR(encoding, hyperOptions, options);
             pear.createModel();
 
             // eslint-disable-next-line no-await-in-loop
@@ -385,8 +409,13 @@ export class PairwiseLTR {
                 testData.y
             );
 
+            if (!silent) {
+                console.log(`Fold ${i} results: loss=${loss.toFixed(4)}`);
+            }
+
             totalLoss += loss;
             totalMetric += metric;
+            model = pear;
         }
 
         const averageLoss = totalLoss / numFolds;
@@ -405,7 +434,11 @@ export class PairwiseLTR {
             );
         }
 
-        return averageLoss;
+        return {
+            loss: averageLoss,
+            metric: averageMetric,
+            model,
+        };
     }
 
     static async newModel(
@@ -437,17 +470,6 @@ export class PairwiseLTR {
     }
 }
 
-// export const JuicyPearService = PairwiseLTR.crossValidate({
-//     hiddenLayerSizes: [32],
-//     outputSize: 1,
-//     training: {
-//         epochs: 10,
-//         batchSize: 4,
-//     },
-//     learningRate: 0.001,
-//     maxTrainingSize: 4096,
-// }).then(() => PairwiseLTR.loadModel());
-
 // export const JuicyPearService = PairwiseLTR.newModel(
 //     {
 //         hiddenLayerSizes: [32],
@@ -461,47 +483,4 @@ export class PairwiseLTR {
 //     },
 // );
 
-// {
-//     hiddenLayerSizes: [64],
-//     outputSize: 1,
-//     training: {
-//         epochs: 13,
-//         batchSize: 4,
-//     },
-//     learningRate: 0.001,
-//     maxTrainingSize: 200,
-// }
-
-// MLP.hyperparameterTuning({
-//     hiddenLayerSizes: [48],
-//     outputSize: 1,
-//     training: {
-//         epochs: 10,
-//         batchSize: 16,
-//     },
-//     learningRate: 0.0666,
-//     maxTrainingSize: 2000,
-// })
-//     .then((bestOptions) => {
-//         console.log("Tuned hyperparameters:", bestOptions);
-//     })
-//     .catch((err) => {
-//         console.error(err);
-//     });
-
 export const JuicyPearService = PairwiseLTR.loadModel();
-
-// (async () => {
-//     const jps = await JuicyPearService;
-
-//     console.log(jps.encoding);
-
-//     const input = [
-//         [1, 2, 3, 4],
-//         [5, 6, 7, 8],
-//         [9, 10, 11, 12],
-//     ];
-//     const output = jps.predict(input);
-
-//     console.log("prediction", input, output.dataSync());
-// })();

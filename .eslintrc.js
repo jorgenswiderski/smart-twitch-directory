@@ -20,6 +20,7 @@ module.exports = {
         indent: ['error', 4],
         'import/prefer-default-export': 'off',
         'import/no-default-export': 'error',
+        'import/no-extraneous-dependencies': 'off', // disabled now because it doesn't work, some sort of config issue
     },
     settings: {
         "import/parsers": {

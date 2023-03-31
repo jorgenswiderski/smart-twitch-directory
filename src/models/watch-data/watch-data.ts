@@ -81,11 +81,9 @@ class WatchData {
 
             this.data = data.watchData || [];
 
-            console.log(
-                `Loaded ${this.data.length} entries from local storage.`
-            );
-
-            // console.log(this.data);
+            // console.log(
+            //     `Loaded ${this.data.length} entries from local storage.`
+            // );
         } catch (err) {
             console.error(err);
         }
