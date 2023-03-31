@@ -14,6 +14,7 @@ interface KNNRegressionOptions {
 
 class KNNRegression {
     private k: number;
+
     private distanceFunction: (pointA: number[], pointB: number[]) => number;
 
     constructor(
@@ -34,7 +35,7 @@ class KNNRegression {
         let sum = 0;
 
         for (let i = 0; i < pointA.length; i++) {
-            sum += Math.pow(pointA[i] - pointB[i], 2);
+            sum += (pointA[i] - pointB[i])**2;
         }
 
         return Math.sqrt(sum);

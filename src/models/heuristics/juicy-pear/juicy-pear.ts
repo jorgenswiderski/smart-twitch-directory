@@ -351,7 +351,7 @@ export class PairwiseLTR {
             return null;
         }
 
-        const { model, loss, options, datasetSize, time } = data.pearModel;
+        const { model, loss, options, datasetSize } = data.pearModel;
 
         console.log(
             `Loading Juicy Pear from local storage, with loss=${loss.toFixed(

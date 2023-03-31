@@ -1,14 +1,15 @@
 import * as _ from "lodash";
+import Browser from "webextension-polyfill";
 import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
 import { RandomForest } from "./random-forest";
 import { StreamSagePreprocessor } from "../stream-sage/preprocess";
 import { MlArrayMetrics } from "../../ml-array-metrics";
-import Browser from "webextension-polyfill";
 
 class Minotaur implements HeuristicService {
     forest: RandomForest;
+
     options: any; // FIXME
 
     data: { training: any[]; testing: any[] } = {

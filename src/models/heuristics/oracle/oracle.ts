@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as tf from "@tensorflow/tfjs";
+import Browser from "webextension-polyfill";
 import {
     EncodingInstruction,
     EncodingKeys,
@@ -13,7 +14,6 @@ import {
 } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { CONSTANTS } from "../../constants";
-import Browser from "webextension-polyfill";
 import { OracleCurator } from "./curator";
 
 export interface OracleDataset {
