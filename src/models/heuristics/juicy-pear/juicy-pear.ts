@@ -38,20 +38,21 @@ type ActivationIdentifier =
 
 interface LTROptions {
     autoSave?: boolean;
+    forceSave?: boolean;
 }
 
 interface LTRHyperOptions {
-    hiddenLayerSizes: number[];
-    outputSize: number;
+    hiddenLayerSizes?: number[];
+    outputSize?: number;
     hiddenActivation?: ActivationIdentifier;
     outputActivation?: ActivationIdentifier;
     learningRate?: number;
-    training: {
-        epochs: number;
-        batchSize: number;
-    };
+    epochs?: number;
+    batchSize?: number;
     maxTrainingSize?: number;
     embeddingLayerDimension?: (numCategories: number) => number;
+    loss?: string | string[];
+    metrics?: string | string[];
 }
 
 export class PairwiseLTR {
@@ -69,14 +70,7 @@ export class PairwiseLTR {
 
     constructor(
         public encoding: EncodingKeys,
-        private hyperOptions: LTRHyperOptions = {
-            hiddenLayerSizes: [16],
-            outputSize: 1,
-            training: {
-                epochs: 10,
-                batchSize: 4,
-            },
-        },
+        private hyperOptions: LTRHyperOptions = {},
         private options: LTROptions = {}
     ) {}
 
@@ -94,8 +88,15 @@ export class PairwiseLTR {
     }
 
     createModel() {
-        const { learningRate, hiddenActivation, outputActivation } =
-            this.hyperOptions;
+        const {
+            learningRate,
+            hiddenActivation,
+            outputActivation,
+            hiddenLayerSizes,
+            loss,
+            metrics,
+            outputSize,
+        } = this.hyperOptions;
 
         // Embedding layers for the two streams in each pair
         const userEmbeddingLayer = this.createEmbeddingLayer(
@@ -157,17 +158,19 @@ export class PairwiseLTR {
             .flatten()
             .apply(stream2Features) as tf.SymbolicTensor;
 
-        // Dense layers to process the concatenated features
-        const denseLayer = tf.layers.dense({
-            units: 16,
-            activation: hiddenActivation ?? "relu",
+        let stream1Dense = stream1Flattened;
+        let stream2Dense = stream2Flattened;
+
+        // Create dense layers based on the hiddenLayerSizes array
+        (hiddenLayerSizes ?? [16]).forEach((units) => {
+            const denseLayer = tf.layers.dense({
+                units,
+                activation: hiddenActivation ?? "relu",
+            });
+
+            stream1Dense = denseLayer.apply(stream1Dense) as tf.SymbolicTensor;
+            stream2Dense = denseLayer.apply(stream2Dense) as tf.SymbolicTensor;
         });
-        const stream1Dense = denseLayer.apply(
-            stream1Flattened
-        ) as tf.SymbolicTensor;
-        const stream2Dense = denseLayer.apply(
-            stream2Flattened
-        ) as tf.SymbolicTensor;
 
         // Compute the difference between the two processed streams using a custom layer
         // Custom layer is required to subtract SymbolicTensors, since lambda layers aren't supported in Tensorflow.js API
@@ -175,7 +178,10 @@ export class PairwiseLTR {
 
         // Output layer to produce a single score
         const output = tf.layers
-            .dense({ units: 1, activation: outputActivation ?? "sigmoid" })
+            .dense({
+                units: outputSize,
+                activation: outputActivation ?? "sigmoid",
+            })
             .apply(subtracted) as tf.SymbolicTensor;
 
         // Create the model
@@ -186,8 +192,8 @@ export class PairwiseLTR {
 
         this.model.compile({
             optimizer: tf.train.adam(learningRate || 0.001),
-            loss: "binaryCrossentropy",
-            metrics: ["accuracy"],
+            loss: loss || "binaryCrossentropy",
+            metrics: metrics || ["accuracy"],
         });
     }
 
@@ -201,13 +207,13 @@ export class PairwiseLTR {
 
     async train(dataset: number[][], labels: number[][]) {
         this.trainingDatasetSize = dataset.length;
-        const { epochs, batchSize } = this.hyperOptions.training;
+        const { epochs, batchSize } = this.hyperOptions;
         const dataTensors = PairwiseLTR.convertDatasetToTensors(dataset);
         const labelsTensor = tf.tensor2d(labels);
 
         await this.model.fit(dataTensors, labelsTensor, {
-            epochs,
-            batchSize,
+            epochs: epochs ?? 10,
+            batchSize: batchSize ?? 4,
         });
     }
 
@@ -217,6 +223,8 @@ export class PairwiseLTR {
     }
 
     async evaluate(dataset: number[][], labels: number[][]) {
+        const { autoSave, forceSave } = this.options;
+
         const testTensors = PairwiseLTR.convertDatasetToTensors(dataset);
         const labelsTensor = tf.tensor2d(labels);
 
@@ -230,10 +238,10 @@ export class PairwiseLTR {
             metric: metric.dataSync()[0],
         };
 
-        if (this.options.autoSave) {
+        if (autoSave || forceSave) {
             const stats = await PairwiseLTR.getSavedModelStats();
 
-            if (!stats || results.loss < (stats?.loss ?? 100)) {
+            if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
                 await this.saveModel(results.loss, this.trainingDatasetSize);
                 console.log("Saved Juicy Pear model to local storage.");
             }

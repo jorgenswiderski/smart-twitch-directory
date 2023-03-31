@@ -10,16 +10,11 @@ async function trainModel() {
     await PairwiseLTR.newModel(
         {
             hiddenLayerSizes: [32],
-            outputSize: 1,
-            training: {
-                epochs: 10,
-                batchSize: 4,
-            },
-            learningRate: 0.001,
             maxTrainingSize: 256,
         },
         {
             autoSave: true,
+            forceSave: true,
         }
     );
 }
