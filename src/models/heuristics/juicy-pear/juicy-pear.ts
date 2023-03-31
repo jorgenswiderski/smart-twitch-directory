@@ -68,6 +68,8 @@ export class PairwiseLTR {
         // is_mature: EncodingInstruction.BOOLEAN,
     };
 
+    static modelName: "juicy-pear";
+
     constructor(
         public encoding: EncodingKeys,
         private hyperOptions: LTRHyperOptions = {},
@@ -98,7 +100,7 @@ export class PairwiseLTR {
             outputSize,
         } = this.hyperOptions;
 
-        // Embedding layers for the two streams in each pair
+        // Create embedding layers
         const userEmbeddingLayer = this.createEmbeddingLayer(
             (this.encoding as any).user_id.categories.length
         );
@@ -106,87 +108,63 @@ export class PairwiseLTR {
             (this.encoding as any).game_id.categories.length
         );
 
-        // Input layers for the two streams in each pair
-        const user1Input = tf.input({
-            shape: [1],
-            dtype: "int32",
-            name: "user1Input",
-        });
-        const game1Input = tf.input({
-            shape: [1],
-            dtype: "int32",
-            name: "game1Input",
-        });
-        const user2Input = tf.input({
-            shape: [1],
-            dtype: "int32",
-            name: "user2Input",
-        });
-        const game2Input = tf.input({
-            shape: [1],
-            dtype: "int32",
-            name: "game2Input",
-        });
+        // Create input layers
+        const inputs = [
+            "user1Input",
+            "game1Input",
+            "user2Input",
+            "game2Input",
+        ].map((name) =>
+            tf.input({
+                shape: [1],
+                dtype: "int32",
+                name,
+            })
+        );
 
-        // Apply the embedding layers to the inputs
-        const user1Embedded = userEmbeddingLayer.apply(
-            user1Input
-        ) as tf.SymbolicTensor;
-        const game1Embedded = gameEmbeddingLayer.apply(
-            game1Input
-        ) as tf.SymbolicTensor;
-        const user2Embedded = userEmbeddingLayer.apply(
-            user2Input
-        ) as tf.SymbolicTensor;
-        const game2Embedded = gameEmbeddingLayer.apply(
-            game2Input
-        ) as tf.SymbolicTensor;
+        // Apply embedding layers
+        const embedded = inputs.map((input, idx) =>
+            idx % 2 === 0
+                ? userEmbeddingLayer.apply(input)
+                : gameEmbeddingLayer.apply(input)
+        ) as tf.SymbolicTensor[];
 
-        // Concatenate the embedded features for each stream
-        const stream1Features = tf.layers
-            .concatenate()
-            .apply([user1Embedded, game1Embedded]) as tf.SymbolicTensor;
-        const stream2Features = tf.layers
-            .concatenate()
-            .apply([user2Embedded, game2Embedded]) as tf.SymbolicTensor;
+        // Concatenate and flatten features
+        const flattened = [
+            tf.layers.concatenate().apply([embedded[0], embedded[1]]),
+            tf.layers.concatenate().apply([embedded[2], embedded[3]]),
+        ].map((tensor) => tf.layers.flatten().apply(tensor));
 
-        // Flatten the concatenated features
-        const stream1Flattened = tf.layers
-            .flatten()
-            .apply(stream1Features) as tf.SymbolicTensor;
-        const stream2Flattened = tf.layers
-            .flatten()
-            .apply(stream2Features) as tf.SymbolicTensor;
-
-        let stream1Dense = stream1Flattened;
-        let stream2Dense = stream2Flattened;
-
-        // Create dense layers based on the hiddenLayerSizes array
-        (hiddenLayerSizes ?? [16]).forEach((units) => {
-            const denseLayer = tf.layers.dense({
+        // Create hidden layers
+        const hiddenLayers = (hiddenLayerSizes ?? [16]).map((units) =>
+            tf.layers.dense({
                 units,
                 activation: hiddenActivation ?? "relu",
-            });
+            })
+        );
 
-            stream1Dense = denseLayer.apply(stream1Dense) as tf.SymbolicTensor;
-            stream2Dense = denseLayer.apply(stream2Dense) as tf.SymbolicTensor;
+        // Apply dense layers
+        let [stream1Dense, stream2Dense] = flattened as tf.SymbolicTensor[];
+        hiddenLayers.forEach((hiddenLayer) => {
+            stream1Dense = hiddenLayer.apply(stream1Dense) as tf.SymbolicTensor;
+            stream2Dense = hiddenLayer.apply(stream2Dense) as tf.SymbolicTensor;
         });
 
-        // Compute the difference between the two processed streams using a custom layer
+        // Compute difference using custom layer
         // Custom layer is required to subtract SymbolicTensors, since lambda layers aren't supported in Tensorflow.js API
         const subtracted = subtractLayer().apply([stream1Dense, stream2Dense]);
 
-        // Output layer to produce a single score
+        // Create output layer
         const output = tf.layers
             .dense({
-                units: outputSize,
+                units: outputSize ?? 1,
                 activation: outputActivation ?? "sigmoid",
             })
             .apply(subtracted) as tf.SymbolicTensor;
 
-        // Create the model
+        // Create and compile the model
         this.model = tf.model({
-            inputs: [user1Input, game1Input, user2Input, game2Input],
+            inputs,
             outputs: output,
         });
 
@@ -322,19 +300,22 @@ export class PairwiseLTR {
             .sort((a, b) => b.score - a.score);
     }
 
-    static async getSavedModelStats(): Promise<LTRModelStats | void> {
-        const data = await Browser.storage.local.get("pearModel");
+    static async getSavedModelStats(): Promise<LTRModelStats | null> {
+        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
 
-        if (data.pearModel) {
-            const { loss, options, datasetSize, time } = data.pearModel;
-
-            return { loss, options, datasetSize, time };
+        if (!data[PairwiseLTR.modelName]) {
+            return null;
         }
+
+        const { loss, options, datasetSize, time } =
+            data[PairwiseLTR.modelName];
+
+        return { loss, options, datasetSize, time };
     }
 
     async saveModel(loss: number, datasetSize: number) {
         return Browser.storage.local.set({
-            pearModel: {
+            [PairwiseLTR.modelName]: {
                 model: await this.toJSON(),
                 loss,
                 options: this.hyperOptions,
@@ -345,13 +326,14 @@ export class PairwiseLTR {
     }
 
     static async loadModel(): Promise<PairwiseLTR | null> {
-        const data = await Browser.storage.local.get("pearModel");
+        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
 
-        if (!data.pearModel) {
+        if (!data[PairwiseLTR.modelName]) {
             return null;
         }
 
-        const { model, loss, options, datasetSize } = data.pearModel;
+        const { model, loss, options, datasetSize } =
+            data[PairwiseLTR.modelName];
 
         console.log(
             `Loading Juicy Pear from local storage, with loss=${loss.toFixed(
