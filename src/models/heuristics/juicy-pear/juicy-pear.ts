@@ -4,15 +4,14 @@ import moment from "moment";
 import Browser from "webextension-polyfill";
 
 import {
-    EncodingInstruction,
     EncodingKeys,
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
-import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
+import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
-import { OracleCurator } from "../oracle/curator";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
+import { LtrPreprocessor } from "./preprocessor";
 
 interface LTRModelStats {
     loss: number;
@@ -58,23 +57,17 @@ interface LTRHyperOptions {
 export class PairwiseLTR {
     model: tf.LayersModel;
 
-    static encodingInstructions = {
-        user_id: EncodingInstruction.CATEGORY_INDEX,
-        game_id: EncodingInstruction.CATEGORY_INDEX,
-        // language: EncodingInstruction.ONE_HOT,
-        // FIXME: convert to embedding layer / category index
-        // title: EncodingInstruction.BAG_OF_WORDS,
-        // viewer_count: EncodingInstruction.NORMALIZE,
-        // is_mature: EncodingInstruction.BOOLEAN,
-    };
-
     static modelName: "juicy-pear";
+
+    preprocessor: LtrPreprocessor;
 
     constructor(
         public encoding: EncodingKeys,
-        private hyperOptions: LTRHyperOptions = {},
-        private options: LTROptions = {}
-    ) {}
+        public hyperOptions: LTRHyperOptions = {},
+        public options: LTROptions = {}
+    ) {
+        this.preprocessor = new LtrPreprocessor(this);
+    }
 
     createEmbeddingLayer(numCategories: number) {
         const embeddingDimension = this.hyperOptions.embeddingLayerDimension
@@ -175,19 +168,15 @@ export class PairwiseLTR {
         });
     }
 
-    static convertDatasetToTensors(dataset: number[][]): tf.Tensor[] {
-        return Util.transpose(dataset).map((values) =>
-            tf.tensor1d(values, "int32")
-        );
-    }
-
     trainingDatasetSize: number;
 
-    async train(dataset: number[][], labels: number[][]) {
-        this.trainingDatasetSize = dataset.length;
+    async train(x: number[][], y: number[][]) {
+        // Save the training set size, so we can capture it later if we save the model
+        this.trainingDatasetSize = x.length;
+
         const { epochs, batchSize } = this.hyperOptions;
-        const dataTensors = PairwiseLTR.convertDatasetToTensors(dataset);
-        const labelsTensor = tf.tensor2d(labels);
+        const dataTensors = PairwiseLTR.convertDatasetToTensors(x);
+        const labelsTensor = tf.tensor2d(y);
 
         await this.model.fit(dataTensors, labelsTensor, {
             epochs: epochs ?? 10,
@@ -195,16 +184,27 @@ export class PairwiseLTR {
         });
     }
 
-    predict(inputData: number[][]): tf.Tensor {
-        const inputTensors = PairwiseLTR.convertDatasetToTensors(inputData);
+    predict(x: number[][]): tf.Tensor {
+        const inputTensors = PairwiseLTR.convertDatasetToTensors(x);
         return this.model.predict(inputTensors) as tf.Tensor;
     }
 
-    async evaluate(dataset: number[][], labels: number[][]) {
+    async autoSave(results: { loss: number; metric: number }) {
         const { autoSave, forceSave } = this.options;
 
-        const testTensors = PairwiseLTR.convertDatasetToTensors(dataset);
-        const labelsTensor = tf.tensor2d(labels);
+        if (autoSave || forceSave) {
+            const stats = await PairwiseLTR.getSavedModelStats();
+
+            if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
+                await this.saveModel(results.loss, this.trainingDatasetSize);
+                console.log("Saved Juicy Pear model to local storage.");
+            }
+        }
+    }
+
+    async evaluate(x: number[][], y: number[][]) {
+        const testTensors = PairwiseLTR.convertDatasetToTensors(x);
+        const labelsTensor = tf.tensor2d(y);
 
         const [loss, metric] = this.model.evaluate(
             testTensors,
@@ -216,14 +216,7 @@ export class PairwiseLTR {
             metric: metric.dataSync()[0],
         };
 
-        if (autoSave || forceSave) {
-            const stats = await PairwiseLTR.getSavedModelStats();
-
-            if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
-                await this.saveModel(results.loss, this.trainingDatasetSize);
-                console.log("Saved Juicy Pear model to local storage.");
-            }
-        }
+        this.autoSave(results);
 
         return results;
     }
@@ -248,67 +241,27 @@ export class PairwiseLTR {
     static async fromJSON({
         model,
         encoding,
+        hyperOptions,
     }: {
         model: tf.io.ModelArtifacts;
         encoding: EncodingKeys;
+        hyperOptions: LTRHyperOptions;
     }): Promise<PairwiseLTR> {
-        const ltr = new PairwiseLTR(encoding);
-
+        const ltr = new PairwiseLTR(encoding, hyperOptions);
         ltr.model = await tf.loadLayersModel(tf.io.fromMemory(model));
 
         return ltr;
     }
 
-    scoreAndSortStreams(channelData: WatchStream[]): WatchStreamScored[] {
-        const encoded = channelData.map((stream) =>
-            Object.values(
-                MachineLearningEncoder.encodeEntry(stream, this.encoding)
-            )
-        );
+    static async getStorage() {
+        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
 
-        // Create pairs
-        const pairs = [];
-
-        encoded.forEach((stream1, index1) =>
-            encoded.forEach((stream2, index2) => {
-                if (index1 < index2) {
-                    pairs.push([...stream1, ...stream2]);
-                }
-            })
-        );
-
-        // Make a prediction
-        const prediction = Array.from(this.predict(pairs).dataSync());
-
-        const scores = [];
-
-        encoded.forEach((stream1, index1) =>
-            encoded.forEach((stream2, index2) => {
-                if (index1 < index2) {
-                    const pred = prediction.shift();
-                    scores[index1] = (scores[index1] ?? 0) + pred;
-                    scores[index2] = (scores[index2] ?? 0) + (1 - pred);
-                }
-            })
-        );
-
-        return channelData
-            .map((stream, index) => ({
-                ...stream,
-                score: scores[index] / encoded.length,
-            }))
-            .sort((a, b) => b.score - a.score);
+        return data[PairwiseLTR.modelName];
     }
 
     static async getSavedModelStats(): Promise<LTRModelStats | null> {
-        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
-
-        if (!data[PairwiseLTR.modelName]) {
-            return null;
-        }
-
         const { loss, options, datasetSize, time } =
-            data[PairwiseLTR.modelName];
+            await PairwiseLTR.getStorage();
 
         return { loss, options, datasetSize, time };
     }
@@ -318,7 +271,7 @@ export class PairwiseLTR {
             [PairwiseLTR.modelName]: {
                 model: await this.toJSON(),
                 loss,
-                options: this.hyperOptions,
+                hyperOptions: this.hyperOptions,
                 datasetSize,
                 time: Date.now(),
             },
@@ -326,144 +279,114 @@ export class PairwiseLTR {
     }
 
     static async loadModel(): Promise<PairwiseLTR | null> {
-        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
-
-        if (!data[PairwiseLTR.modelName]) {
-            return null;
-        }
-
-        const { model, loss, options, datasetSize } =
-            data[PairwiseLTR.modelName];
+        const { model, loss, hyperOptions, datasetSize } =
+            await PairwiseLTR.getStorage();
 
         console.log(
             `Loading Juicy Pear from local storage, with loss=${loss.toFixed(
                 4
-            )} options=${JSON.stringify(options)} datasetSize=${datasetSize}`
+            )} hOptions=${JSON.stringify(
+                hyperOptions
+            )} datasetSize=${datasetSize}`
         );
 
         return PairwiseLTR.fromJSON(model);
     }
 
+    static convertDatasetToTensors(dataset: number[][]): tf.Tensor[] {
+        return Util.transpose(dataset).map((values) =>
+            tf.tensor1d(values, "int32")
+        );
+    }
+
+    scoreAndSortStreams(streams: WatchStream[]): WatchStreamScored[] {
+        // Prepare inputs
+        const x = LtrPreprocessor.encodeWatchSample(streams, this.encoding);
+
+        const predictions = Array.from(this.predict(x).dataSync());
+
+        const scores = [];
+
+        // Pairs build process must NOT be changed independently of LtrPreprocessor.encodeWatchSample
+        streams.forEach((stream1, index1) =>
+            streams.forEach((stream2, index2) => {
+                if (index1 < index2) {
+                    const prediction = predictions.shift();
+                    scores[index1] = (scores[index1] ?? 0) + prediction;
+                    scores[index2] = (scores[index2] ?? 0) + (1 - prediction);
+                }
+            })
+        );
+
+        return streams
+            .map((stream, index) => ({
+                ...stream,
+                score: scores[index] / streams.length,
+            }))
+            .sort((a, b) => b.score - a.score);
+    }
+
     static async crossValidate(
         hyperOptions: LTRHyperOptions,
         numFolds: number = 5,
-        silent: boolean = false
+        silent: boolean = false,
+        seed: number = 42
     ) {
         const startTime = moment();
 
-        const samples = await WatchDataService.getData();
-
-        // Create pairs
-        const pairs: [number, number, number][] = [];
-        const streams = [];
-
-        samples.forEach((sample) => {
-            const watched = sample.followedStreams.filter(
-                (stream) => sample.watched[stream.user_id]
-            );
-            const nonwatched = sample.followedStreams.filter(
-                (stream) => !sample.watched[stream.user_id]
-            );
-
-            watched.forEach((stream1) => {
-                const index1 =
-                    sample.followedStreams.findIndex((s) => s === stream1) +
-                    streams.length;
-
-                nonwatched.forEach((stream2) => {
-                    const index2 =
-                        sample.followedStreams.findIndex((s) => s === stream2) +
-                        streams.length;
-
-                    pairs.push([index1, index2, 1]);
-                    pairs.push([index2, index1, 0]);
-                });
-            });
-
-            streams.push(...sample.followedStreams);
+        const {
+            data: { training: data, testing: extraTraining },
+            encoding,
+        } = await LtrPreprocessor.getWatchData({
+            trainingPercent: 1,
+            seed,
         });
 
-        const deduped = OracleCurator.deduplicate(pairs);
-
-        const { encoding, data: encodedStreams } =
-            MachineLearningEncoder.encodeDataset(
-                streams,
-                PairwiseLTR.encodingInstructions
-            );
-
-        const encodedValues = encodedStreams.map((stream) =>
-            Object.values(stream)
-        );
-
-        const encodedPairs = deduped.map((entry) =>
-            [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
-        );
-
-        let data = encodedPairs;
-        let extra = [];
-
-        // Limit the size of rawData
-        if (hyperOptions?.maxTrainingSize > 0) {
-            const breakpoint =
-                hyperOptions.maxTrainingSize * (numFolds / (numFolds - 1));
-            const shuffled = _(encodedPairs).shuffle().value();
-            data = shuffled.slice(0, breakpoint);
-            extra = shuffled.slice(breakpoint);
-        }
-
-        const chunkSize = Math.floor(data.length / numFolds);
-        const shuffledData = _.shuffle(data);
+        const chunkSize = Math.floor(data.x.length / numFolds);
 
         let totalLoss = 0;
         let totalMetric = 0;
-
-        let model: PairwiseLTR;
 
         for (let i = 0; i < numFolds; i += 1) {
             const testStart = i * chunkSize;
             const testEnd = testStart + chunkSize;
 
-            const trainData = [
-                ...shuffledData.slice(0, testStart),
-                ...shuffledData.slice(testEnd),
-            ];
-            const testData = [
-                ...shuffledData.slice(testStart, testEnd),
-                ...extra,
-            ];
+            const trainData = LtrPreprocessor.concat(
+                LtrPreprocessor.slice(data, 0, testStart),
+                LtrPreprocessor.slice(data, testEnd)
+            );
 
-            const { dataset: trainDataset, labels: trainLabels } =
-                PairwiseLTR.composeDataset(trainData);
-            const { dataset: testDataset, labels: testLabels } =
-                PairwiseLTR.composeDataset(testData);
+            const testData = LtrPreprocessor.concat(
+                LtrPreprocessor.slice(data, testStart, testEnd),
+                extraTraining
+            );
 
             if (!silent) {
                 console.log(
-                    `Training fold ${i} with training set of ${trainLabels.length}...`
+                    `Training fold ${i} with training set of ${trainData.x.length}...`
                 );
             }
 
-            const oracle = new PairwiseLTR(encoding, hyperOptions);
-            oracle.createModel();
+            const pear = new PairwiseLTR(encoding, hyperOptions);
+            pear.createModel();
 
             // eslint-disable-next-line no-await-in-loop
-            await oracle.train(trainDataset, trainLabels);
+            await pear.train(trainData.x, trainData.y);
 
             if (!silent) {
                 console.log(
-                    `Testing fold ${i} with test set of ${testLabels.length}...`
+                    `Testing fold ${i} with test set of ${testData.x.length}...`
                 );
             }
 
             // eslint-disable-next-line no-await-in-loop
-            const { loss, metric } = await oracle.evaluate(
-                testDataset,
-                testLabels
+            const { loss, metric } = await pear.evaluate(
+                testData.x,
+                testData.y
             );
 
             totalLoss += loss;
             totalMetric += metric;
-            model = oracle;
         }
 
         const averageLoss = totalLoss / numFolds;
@@ -483,99 +406,30 @@ export class PairwiseLTR {
         }
 
         return averageLoss;
-        // return model;
-    }
-
-    static composeDataset(data: number[][]): {
-        dataset: number[][];
-        labels: number[][];
-    } {
-        return {
-            dataset: data.map((e) => e.slice(0, 4)),
-            labels: data.map((e) => [e[4]]),
-        };
     }
 
     static async newModel(
         hyperOptions: LTRHyperOptions,
         options: LTROptions = {}
     ): Promise<PairwiseLTR> {
+        const { maxTrainingSize } = hyperOptions;
+
+        const {
+            data: { training, testing },
+            encoding,
+        } = await LtrPreprocessor.getWatchData({ maxTrainingSize });
+
+        const model = new PairwiseLTR(encoding, hyperOptions, options);
+        model.createModel();
+
         console.log(
             `Training Juicy pear with options=${JSON.stringify(
                 hyperOptions
             )}...`
         );
 
-        const { maxTrainingSize } = hyperOptions;
-        const samples = await WatchDataService.getData();
-
-        // Create pairs
-        const pairs: [number, number, number][] = [];
-        const streams = [];
-
-        samples.forEach((sample) => {
-            const watched = sample.followedStreams.filter(
-                (stream) => sample.watched[stream.user_id]
-            );
-            const nonwatched = sample.followedStreams.filter(
-                (stream) => !sample.watched[stream.user_id]
-            );
-
-            watched.forEach((stream1) => {
-                const index1 =
-                    sample.followedStreams.findIndex((s) => s === stream1) +
-                    streams.length;
-
-                nonwatched.forEach((stream2) => {
-                    const index2 =
-                        sample.followedStreams.findIndex((s) => s === stream2) +
-                        streams.length;
-
-                    pairs.push([index1, index2, 1]);
-                    pairs.push([index2, index1, 0]);
-                });
-            });
-
-            streams.push(...sample.followedStreams);
-        });
-
-        const deduped = OracleCurator.deduplicate(pairs);
-
-        const { encoding, data: encodedStreams } =
-            MachineLearningEncoder.encodeDataset(
-                streams,
-                PairwiseLTR.encodingInstructions
-            );
-
-        const encodedValues = encodedStreams.map((stream) =>
-            Object.values(stream)
-        );
-
-        const encodedPairs = deduped.map((entry) =>
-            [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
-        );
-
-        let data = encodedPairs;
-        let testing;
-
-        // Limit the size of rawData
-        if ((maxTrainingSize ?? 0) > 0) {
-            const shuffled = _(encodedPairs).shuffle().value();
-            data = shuffled.slice(0, maxTrainingSize);
-            testing = shuffled.slice(maxTrainingSize);
-        }
-
-        const { dataset, labels } = PairwiseLTR.composeDataset(data);
-
-        const model = new PairwiseLTR(encoding, hyperOptions, options);
-        model.createModel();
-
-        await model.train(dataset, labels);
-
-        const { dataset: dataset2, labels: labels2 } =
-            PairwiseLTR.composeDataset(testing);
-
-        const results = await model.evaluate(dataset2, labels2);
+        await model.train(training.x, training.y);
+        const results = await model.evaluate(testing.x, testing.y);
 
         console.log(results);
 

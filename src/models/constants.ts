@@ -5,6 +5,9 @@ const HEURISTICS = {
     STREAM_SAGE: {
         TRAINING_PERCENT: 0.75,
     },
+    JUICY_PEAR: {
+        TRAINING_PERCENT: 0.75,
+    },
 };
 
 const AGGREGATOR = {

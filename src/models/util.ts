@@ -1,3 +1,5 @@
+import { SeededRandomNumberGenerator } from "./seeded-rng";
+
 export class Util {
     // Helper function to normalize a value to the range [0-1] based on a given min and max value
     static normalize(value: number, min: number, max: number): number {
@@ -28,5 +30,19 @@ export class Util {
     // Transpose a 2D array
     static transpose(array) {
         return array[0].map((col, i) => array.map((row) => row[i]));
+    }
+
+    // Perform a Fisher-Yates shuffle on the array, with optional seeded RNG.
+    static shuffleArray<T>(array: T[], seed?: number): T[] {
+        const newArray = [...array];
+        const rng =
+            seed !== undefined ? new SeededRandomNumberGenerator(seed) : Math;
+
+        for (let i = newArray.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(rng.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+
+        return newArray;
     }
 }
