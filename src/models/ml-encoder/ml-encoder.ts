@@ -231,7 +231,7 @@ export class MachineLearningEncoder {
                 encodedEntry[key] = encodingKey.categories.indexOf(entry[key]);
 
                 if (encodedEntry[key] === -1) {
-                    console.error(
+                    console.warn(
                         `Failed to encode '${key}' with value '${entry[key]}'.`
                     );
 

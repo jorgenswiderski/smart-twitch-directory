@@ -73,6 +73,7 @@ async function checkModel() {
 
         if (data.x.length < 64) {
             // Not enough data yet, fallback to a non-ML model.
+            console.log("Not enough data to train Juicy Pear");
             return;
         }
 
