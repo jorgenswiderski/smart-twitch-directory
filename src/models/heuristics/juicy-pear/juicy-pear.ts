@@ -48,6 +48,7 @@ type ActivationIdentifier =
 interface LtrOptions {
     autoSave?: boolean;
     forceSave?: boolean;
+    yieldEvery?: number;
 }
 
 interface LtrHyperOptions {
@@ -246,6 +247,7 @@ export class PairwiseLtr {
         this.datasetSize.training = x.length;
 
         const { epochs, batchSize } = this.hyperOptions;
+        const { yieldEvery } = this.options;
         const dataTensors = this.static.convertDatasetToTensors(x);
         const labelsTensor = tf.tensor2d(y);
 
@@ -253,6 +255,7 @@ export class PairwiseLtr {
             epochs,
             batchSize,
             callbacks: this.trainingCallbacks,
+            yieldEvery,
         });
     }
 
