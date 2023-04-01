@@ -99,6 +99,8 @@ export function ChannelsGrid() {
             channels.map((channel) => ({
                 ...channel,
                 avatar_url: avatars[channel.user_id],
+                // Force change on URL to avoid cache, this allows the thumbnail image to refresh
+                thumbnail_url: `${channel.thumbnail_url}?${Date.now()}`
             })),
         [channels, avatars]
     );
