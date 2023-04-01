@@ -11,11 +11,11 @@ import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
-import { LtrPreprocessor } from "./preprocessor";
+import { LtrInputType, LtrPreprocessor } from "./preprocessor";
 
-export interface LTRModelStats {
+export interface LtrModelStats {
     loss: number;
-    options: LTRHyperOptions;
+    options: LtrHyperOptions;
     datasetSize: {
         total: number;
         training: number;
@@ -23,7 +23,7 @@ export interface LTRModelStats {
     time: number;
 }
 
-export interface LTRModelInfo extends LTRModelStats {
+export interface LtrModelInfo extends LtrModelStats {
     model: {
         model: any;
         encoding: EncodingKeys;
@@ -45,12 +45,12 @@ type ActivationIdentifier =
     | "swish"
     | "mish";
 
-interface LTROptions {
+interface LtrOptions {
     autoSave?: boolean;
     forceSave?: boolean;
 }
 
-interface LTRHyperOptions {
+interface LtrHyperOptions {
     hiddenLayerSizes?: number[];
     outputSize?: number;
     hiddenActivation?: ActivationIdentifier;
@@ -62,14 +62,19 @@ interface LTRHyperOptions {
     embeddingLayerDimension?: (numCategories: number) => number;
     loss?: string | string[];
     metrics?: string | string[];
+    earlyStopping?: boolean;
+    minDelta?: number;
+    patience?: number;
 }
 
-export class PairwiseLTR {
+export class PairwiseLtr {
     model: tf.LayersModel;
 
-    static modelName: "juicy-pear";
+    static modelName = "juicy-pear";
 
-    hyperOptions: LTRHyperOptions;
+    static inputType: LtrInputType = "pairs";
+
+    hyperOptions: LtrHyperOptions;
 
     datasetSize: {
         training?: number;
@@ -78,8 +83,8 @@ export class PairwiseLTR {
 
     constructor(
         public encoding: EncodingKeys,
-        hyperOptions: LTRHyperOptions = {},
-        public options: LTROptions = {}
+        hyperOptions: LtrHyperOptions = {},
+        public options: LtrOptions = {}
     ) {
         this.hyperOptions = {
             hiddenLayerSizes: [16],
@@ -93,8 +98,15 @@ export class PairwiseLTR {
                 Math.ceil(Math.sqrt(numCategories)),
             loss: "binaryCrossentropy",
             metrics: ["accuracy"],
+            earlyStopping: true,
+            minDelta: 0.001,
+            patience: 3,
             ...hyperOptions,
         };
+    }
+
+    get static() {
+        return this.constructor as typeof PairwiseLtr;
     }
 
     createEmbeddingLayer(numCategories: number, layerName: string) {
@@ -198,22 +210,53 @@ export class PairwiseLTR {
         });
     }
 
+    createEarlyStoppingCallback() {
+        const { minDelta, patience } = this.hyperOptions;
+
+        const earlyStoppingCallback = {
+            bestValLoss: Number.MAX_VALUE,
+            wait: 0,
+            onEpochEnd: (epoch: number, logs) => {
+                if (logs.loss < earlyStoppingCallback.bestValLoss - minDelta) {
+                    earlyStoppingCallback.bestValLoss = logs.loss;
+                    earlyStoppingCallback.wait = 0;
+                } else {
+                    earlyStoppingCallback.wait += 1;
+                    if (earlyStoppingCallback.wait >= patience) {
+                        this.model.stopTraining = true;
+                        console.log(
+                            `Training stopped early after ${epoch + 1} epochs.`
+                        );
+                    }
+                }
+            },
+        };
+
+        return earlyStoppingCallback;
+    }
+
     async train(x: number[][], y: number[][]) {
         // Save the training set size, so we can capture it later if we save the model
         this.datasetSize.training = x.length;
 
-        const { epochs, batchSize } = this.hyperOptions;
-        const dataTensors = PairwiseLTR.convertDatasetToTensors(x);
+        const { epochs, batchSize, earlyStopping } = this.hyperOptions;
+        const dataTensors = this.static.convertDatasetToTensors(x);
         const labelsTensor = tf.tensor2d(y);
+        const callbacks = [];
+
+        if (earlyStopping) {
+            callbacks.push(this.createEarlyStoppingCallback());
+        }
 
         await this.model.fit(dataTensors, labelsTensor, {
             epochs,
             batchSize,
+            callbacks,
         });
     }
 
     predict(x: number[][]): tf.Tensor {
-        const inputTensors = PairwiseLTR.convertDatasetToTensors(x);
+        const inputTensors = this.static.convertDatasetToTensors(x);
         return this.model.predict(inputTensors) as tf.Tensor;
     }
 
@@ -221,17 +264,19 @@ export class PairwiseLTR {
         const { autoSave, forceSave } = this.options;
 
         if (autoSave || forceSave) {
-            const stats = await PairwiseLTR.getSavedModelStats();
+            const stats = await this.static.getSavedModelStats();
 
             if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
                 await this.saveModel(results.loss);
-                console.log("Saved Juicy Pear model to local storage.");
+                console.log(
+                    `Saved ${this.static.modelName} model to local storage.`
+                );
             }
         }
     }
 
     async evaluate(x: number[][], y: number[][]) {
-        const testTensors = PairwiseLTR.convertDatasetToTensors(x);
+        const testTensors = this.static.convertDatasetToTensors(x);
         const labelsTensor = tf.tensor2d(y);
 
         const [loss, metric] = this.model.evaluate(
@@ -273,26 +318,26 @@ export class PairwiseLTR {
     }: {
         model: tf.io.ModelArtifacts;
         encoding: EncodingKeys;
-        hyperOptions: LTRHyperOptions;
-    }): Promise<PairwiseLTR> {
-        const ltr = new PairwiseLTR(encoding, hyperOptions);
+        hyperOptions: LtrHyperOptions;
+    }): Promise<PairwiseLtr> {
+        const ltr = new this(encoding, hyperOptions);
         ltr.model = await tf.loadLayersModel(tf.io.fromMemory(model));
 
         return ltr;
     }
 
     static async getStorage() {
-        const data = await Browser.storage.local.get(PairwiseLTR.modelName);
+        const data = await Browser.storage.local.get(this.modelName);
 
-        return data[PairwiseLTR.modelName];
+        return data[this.modelName];
     }
 
     // FIXME
-    static async getSavedModelStats(): Promise<LTRModelStats | null> {
+    static async getSavedModelStats(): Promise<LtrModelStats | null> {
         try {
             // FIXME: throws on undefined
             const { loss, options, datasetSize, time } =
-                await PairwiseLTR.getStorage();
+                await this.getStorage();
 
             return { loss, options, datasetSize, time };
         } catch (err) {
@@ -301,11 +346,11 @@ export class PairwiseLTR {
     }
 
     // FIXME
-    static async getSavedModelInfo(): Promise<LTRModelInfo | null> {
+    static async getSavedModelInfo(): Promise<LtrModelInfo | null> {
         try {
             // FIXME: throws on undefined
             const { loss, options, datasetSize, time, model } =
-                await PairwiseLTR.getStorage();
+                await this.getStorage();
 
             return { loss, options, datasetSize, time, model };
         } catch (err) {
@@ -315,7 +360,7 @@ export class PairwiseLTR {
 
     async saveModel(loss: number) {
         return Browser.storage.local.set({
-            [PairwiseLTR.modelName]: {
+            [this.static.modelName]: {
                 model: await this.toJSON(),
                 loss,
                 hyperOptions: {
@@ -330,19 +375,19 @@ export class PairwiseLTR {
     }
 
     // FIXME
-    static async loadModel(): Promise<PairwiseLTR | null> {
+    static async loadModel(): Promise<PairwiseLtr | null> {
         try {
             // FIXME: throws on undefined
             const { model, loss, hyperOptions, datasetSize } =
-                await PairwiseLTR.getStorage();
+                await this.getStorage();
 
-            console.log(`Loading Juicy Pear from local storage...`, {
+            console.log(`Loading ${this.modelName} from local storage...`, {
                 datasetSize,
                 loss: Number(loss.toFixed(4)),
                 hyperOptions,
             });
 
-            return await PairwiseLTR.fromJSON(model);
+            return await this.fromJSON(model);
         } catch (err) {
             console.log(err);
         }
@@ -415,14 +460,14 @@ export class PairwiseLTR {
     }
 
     static async crossValidate(
-        hyperOptions: LTRHyperOptions,
-        options: LTROptions = {},
+        hyperOptions: LtrHyperOptions,
+        options: LtrOptions = {},
         numFolds: number = 5,
         silent: boolean = false,
         seed: number = 42
-    ) {
+    ): Promise<{ loss: number; metric: number; model: PairwiseLtr }> {
         if (!silent) {
-            console.log(`Cross validating Juicy Pear...`, {
+            console.log(`Cross validating ${this.modelName}...`, {
                 numFolds,
                 seed,
                 hyperOptions,
@@ -436,6 +481,7 @@ export class PairwiseLTR {
             data: { training: data, testing: extraTraining },
             encoding,
         } = await LtrPreprocessor.getWatchData({
+            inputType: this.inputType,
             maxTrainingSize: maxTrainingSize * (numFolds / (numFolds - 1)),
             trainingPercent: 1,
             seed,
@@ -445,7 +491,7 @@ export class PairwiseLTR {
 
         let totalLoss = 0;
         let totalMetric = 0;
-        let model;
+        let returnModel;
 
         for (let i = 0; i < numFolds; i += 1) {
             const testStart = i * chunkSize;
@@ -467,12 +513,12 @@ export class PairwiseLTR {
                 );
             }
 
-            const pear = new PairwiseLTR(encoding, hyperOptions, options);
-            pear.createModel();
-            pear.datasetSize.total = data.x.length + extraTraining.x.length;
+            const model = new this(encoding, hyperOptions, options);
+            model.createModel();
+            model.datasetSize.total = data.x.length + extraTraining.x.length;
 
             // eslint-disable-next-line no-await-in-loop
-            await pear.train(trainData.x, trainData.y);
+            await model.train(trainData.x, trainData.y);
 
             if (!silent) {
                 console.log(
@@ -481,7 +527,7 @@ export class PairwiseLTR {
             }
 
             // eslint-disable-next-line no-await-in-loop
-            const { loss, metric } = await pear.evaluate(
+            const { loss, metric } = await model.evaluate(
                 testData.x,
                 testData.y
             );
@@ -492,7 +538,7 @@ export class PairwiseLTR {
 
             totalLoss += loss;
             totalMetric += metric;
-            model = pear;
+            returnModel = model;
         }
 
         const averageLoss = totalLoss / numFolds;
@@ -514,27 +560,31 @@ export class PairwiseLTR {
         return {
             loss: averageLoss,
             metric: averageMetric,
-            model,
+            model: returnModel,
         };
     }
 
     static async newModel(
-        hyperOptions: LTRHyperOptions,
-        options: LTROptions = {}
-    ): Promise<PairwiseLTR> {
+        hyperOptions: LtrHyperOptions,
+        options: LtrOptions = {}
+    ): Promise<PairwiseLtr> {
+        const startTime = moment();
         const { maxTrainingSize } = hyperOptions;
 
         const {
             data: { training, testing },
             encoding,
-        } = await LtrPreprocessor.getWatchData({ maxTrainingSize });
+        } = await LtrPreprocessor.getWatchData({
+            inputType: this.inputType,
+            maxTrainingSize,
+        });
 
-        const model = new PairwiseLTR(encoding, hyperOptions, options);
+        const model = new this(encoding, hyperOptions, options);
         model.createModel();
         model.datasetSize.total = training.x.length + testing.x.length;
 
         console.log(
-            `Training Juicy pear with options=${JSON.stringify(
+            `Training ${this.modelName} with options=${JSON.stringify(
                 hyperOptions
             )}...`
         );
@@ -544,6 +594,124 @@ export class PairwiseLTR {
 
         console.log(results);
 
+        console.log(
+            `${this.modelName} training completed in ${moment().diff(
+                startTime,
+                "seconds"
+            )} seconds.`
+        );
+
         return model;
+    }
+
+    static async hypertune(
+        baseHyperOptions: LtrHyperOptions,
+        options: LtrOptions = {},
+        iterations: number = 1000
+    ) {
+        console.log(`Starting ${this.modelName} hyperparameter tuning...`);
+
+        const searchSpace = {
+            hiddenLayerSizes: [
+                [8],
+                [12],
+                [16],
+                [20],
+                [24],
+                [28],
+                [32],
+                [40],
+                [48],
+                [56],
+                [64],
+                [8, 4],
+                [12, 6],
+                [16, 8],
+                [20, 10],
+                [24, 12],
+                [28, 14],
+                [32, 16],
+                [40, 20],
+                [48, 24],
+                [56, 28],
+                [64, 32],
+            ],
+            hiddenActivation: [
+                "relu",
+                "elu",
+                "tanh",
+                "sigmoid",
+                "swish",
+                "mish",
+            ],
+            outputActivation: ["linear", "softmax", "sigmoid", "hardSigmoid"],
+            learningRate: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2],
+            batchSize: [1, 2, 4, 8, 16, 32, 64],
+            // embeddingLayerDimension: (numCategories: number) =>
+            //     Math.ceil(Math.sqrt(numCategories)),
+        };
+
+        const choose = (arr) => arr[Math.floor(arr.length * Math.random())];
+        const mutate = (ho: LtrHyperOptions) => {
+            let hyperOptions = { ...ho };
+
+            // Mutate a random key
+            let thresh = 1.0;
+
+            while (Math.random() < thresh) {
+                thresh /= 3;
+                const key = choose(Object.keys(hyperOptions));
+                const value = choose(searchSpace[key]);
+
+                console.log(`Mutating ${key} to ${value}`);
+                hyperOptions = {
+                    ...hyperOptions,
+                    [key]: value,
+                };
+            }
+
+            return hyperOptions;
+        };
+
+        let bestLoss = 0.69;
+        let bestOptions: LtrHyperOptions = {};
+        const tried = {};
+
+        // initialize options
+        Object.entries(searchSpace).forEach(([key, choices]) => {
+            bestOptions[key] = choose(choices);
+        });
+
+        for (let i = 0; i < iterations; i += 1) {
+            let hyperOptions: LtrHyperOptions;
+
+            while (!hyperOptions) {
+                const candidate = mutate(bestOptions);
+
+                if (!tried[JSON.stringify(candidate)]) {
+                    hyperOptions = candidate;
+                }
+            }
+
+            // eslint-disable-next-line no-await-in-loop
+            const { loss, model } = await PairwiseLtr.crossValidate(
+                {
+                    ...baseHyperOptions,
+                    ...hyperOptions,
+                },
+                options
+            );
+
+            tried[JSON.stringify(hyperOptions)] = true;
+
+            if (loss < bestLoss) {
+                bestLoss = loss;
+                bestOptions = hyperOptions;
+                console.log(
+                    `New best loss of ${bestLoss.toFixed(4)}!`,
+                    model.hyperOptions
+                );
+            }
+        }
     }
 }

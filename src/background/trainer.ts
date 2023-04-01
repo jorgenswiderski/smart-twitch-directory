@@ -1,8 +1,8 @@
 import moment from "moment";
 import {
-    LTRModelInfo,
-    LTRModelStats,
-    PairwiseLTR,
+    LtrModelInfo,
+    LtrModelStats,
+    PairwiseLtr,
 } from "../models/heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../models/heuristics/juicy-pear/preprocessor";
 import {
@@ -11,7 +11,7 @@ import {
 } from "../models/ml-encoder/ml-encoder";
 
 async function trainModel() {
-    await PairwiseLTR.newModel(
+    await PairwiseLtr.newModel(
         {
             hiddenLayerSizes: [16],
             maxTrainingSize: 2048,
@@ -24,13 +24,13 @@ async function trainModel() {
     );
 }
 
-function getModelAgeInHours({ time }: LTRModelStats): number {
+function getModelAgeInHours({ time }: LtrModelStats): number {
     const created = moment(time);
     return moment().diff(created, "hours", true);
 }
 
 function modelHasCompleteEncoding(
-    { model: { encoding: cachedEncoding } }: LTRModelInfo,
+    { model: { encoding: cachedEncoding } }: LtrModelInfo,
     newestEncoding: EncodingKeys
 ): boolean {
     const hasSameKeys =
@@ -56,7 +56,7 @@ function modelHasCompleteEncoding(
 }
 
 function isDatasetMuchBigger(
-    { datasetSize: { total: cachedLength } }: LTRModelStats,
+    { datasetSize: { total: cachedLength } }: LtrModelStats,
     newLength
 ): boolean {
     return !cachedLength || !newLength || newLength / 2 >= cachedLength;
@@ -64,12 +64,15 @@ function isDatasetMuchBigger(
 
 async function checkModel() {
     try {
-        const info = await PairwiseLTR.getSavedModelInfo();
+        const info = await PairwiseLtr.getSavedModelInfo();
 
         const {
             encoding,
             data: { training: data },
-        } = await LtrPreprocessor.getWatchData({ trainingPercent: 1 });
+        } = await LtrPreprocessor.getWatchData({
+            inputType: PairwiseLtr.inputType,
+            trainingPercent: 1,
+        });
 
         if (data.x.length < 64) {
             // Not enough data yet, fallback to a non-ML model.
@@ -110,11 +113,38 @@ async function checkModel() {
 
 setInterval(checkModel, 60000);
 
-// PairwiseLTR.crossValidate(
+// PairwiseLtr.crossValidate(
 //     {
 //         hiddenLayerSizes: [16],
-//         maxTrainingSize: 2048,
+//         // maxTrainingSize: 2709,
+//         maxTrainingSize: 512,
 //         batchSize: 16,
+//     },
+//     {
+//         autoSave: true,
+//     }
+// ).catch((err) => {
+//     console.error(err);
+// });
+
+PairwiseLtr.hypertune(
+    {
+        hiddenLayerSizes: [16],
+        // maxTrainingSize: 2709,
+        maxTrainingSize: 512,
+        batchSize: 16,
+    },
+    { autoSave: true }
+).catch((err) => {
+    console.error(err);
+});
+
+// 0.0684
+// PointwiseLtr.crossValidate(
+//     {
+//         hiddenLayerSizes: [20],
+//         maxTrainingSize: 1024,
+//         learningRate: 0.001, // done
 //     },
 //     {
 //         autoSave: true,

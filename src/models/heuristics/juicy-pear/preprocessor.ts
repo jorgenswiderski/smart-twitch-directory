@@ -6,10 +6,17 @@ import {
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
 import { Util } from "../../util";
-import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
+import {
+    WatchDataService,
+    WatchSample,
+    WatchStream,
+} from "../../watch-data/watch-data";
 import { OracleCurator } from "../oracle/curator";
 
+export type LtrInputType = "pairs" | "points";
+
 interface PreprocessOptions {
+    inputType: LtrInputType;
     maxTrainingSize?: number;
     trainingPercent?: number;
     seed?: number;
@@ -46,10 +53,12 @@ export class LtrPreprocessor {
         // is_mature: EncodingInstruction.BOOLEAN,
     };
 
-    static composeDataset(data: number[][]): LtrData {
+    static composeDataset(data: number[][], inputType: LtrInputType): LtrData {
+        const xSize = inputType === "points" ? 2 : 4;
+
         return {
-            x: data.map((e) => e.slice(0, 4)),
-            y: data.map((e) => [e[4]]),
+            x: data.map((e) => e.slice(0, xSize)),
+            y: data.map((e) => [e[xSize]]),
         };
     }
 
@@ -70,7 +79,8 @@ export class LtrPreprocessor {
     static calculateStats(
         data: number[][],
         uniqueStreamers: number[],
-        uniqueCategories: number[]
+        uniqueCategories: number[],
+        inputType: LtrInputType
     ): SamplerStats {
         const streamers: {
             [key: number]: { positive: number[][]; negative: number[][] };
@@ -93,10 +103,16 @@ export class LtrPreprocessor {
         });
 
         data.forEach((entry) => {
-            streamers[entry[0]].positive.push(entry);
-            streamers[entry[2]].negative.push(entry);
-            categories[entry[1]].positive.push(entry);
-            categories[entry[3]].negative.push(entry);
+            if (inputType === "pairs") {
+                streamers[entry[0]].positive.push(entry);
+                streamers[entry[2]].negative.push(entry);
+                categories[entry[1]].positive.push(entry);
+                categories[entry[3]].negative.push(entry);
+            } else if (inputType === "points") {
+                const polarity = entry[2] > 0 ? "positive" : "negative";
+                streamers[entry[0]][polarity].push(entry);
+                categories[entry[1]][polarity].push(entry);
+            }
         });
 
         const stats: SamplerStats = {
@@ -141,7 +157,8 @@ export class LtrPreprocessor {
     static buildRepresentativeSample(
         data: number[][],
         size: number,
-        seed: number
+        seed: number,
+        inputType: LtrInputType
     ) {
         const uniqueStreamers = Array.from(
             new Set(data.map((entry) => [entry[0], entry[2]]).flat())
@@ -153,15 +170,18 @@ export class LtrPreprocessor {
         const stats = this.calculateStats(
             data,
             uniqueStreamers,
-            uniqueCategories
+            uniqueCategories,
+            inputType
         );
+
         const pool: number[][] = Util.shuffleArray(
             JSON.parse(JSON.stringify(data)),
             seed
         );
+
         const sample: number[][] = [];
 
-        const searchKeys = {
+        let searchKeys = {
             positive: {
                 streamers: 0,
                 categories: 1,
@@ -172,11 +192,21 @@ export class LtrPreprocessor {
             },
         };
 
+        if (inputType === "points") {
+            searchKeys = {
+                ...searchKeys,
+                negative: {
+                    ...searchKeys.positive,
+                },
+            };
+        }
+
         for (let i = 0; i < size; i += 1) {
             const currentStats = this.calculateStats(
                 sample,
                 uniqueStreamers,
-                uniqueCategories
+                uniqueCategories,
+                inputType
             );
 
             const streamScores = this.getNetScores(
@@ -223,7 +253,8 @@ export class LtrPreprocessor {
         // const currentStats = this.calculateStats(
         //     sample,
         //     uniqueStreamers,
-        //     uniqueCategories
+        //     uniqueCategories,
+        //     inputType
         // );
 
         // const squares = [
@@ -239,19 +270,7 @@ export class LtrPreprocessor {
         return [sample, pool];
     }
 
-    static async getWatchData({
-        trainingPercent,
-        maxTrainingSize,
-        seed,
-    }: PreprocessOptions): Promise<{
-        data: {
-            training: LtrData;
-            testing: LtrData;
-        };
-        encoding: EncodingKeys;
-    }> {
-        const samples = await WatchDataService.getData();
-
+    static convertSamplesToXyPairs(samples: WatchSample[]) {
         // Create pairs
         const pairs: [number, number, number][] = [];
         const streams = [];
@@ -294,42 +313,92 @@ export class LtrPreprocessor {
             Object.values(stream)
         );
 
-        const encodedPairs = deduped.map((entry) =>
+        const xy = deduped.map((entry) =>
             [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
         );
+
+        return { encoding, xy };
+    }
+
+    static convertSamplesToXyPoints(samples: WatchSample[]) {
+        // TODO: try adding timestamp here before deduplication
+        const points = samples
+            .map((sample) =>
+                sample.followedStreams.map((stream) => ({
+                    ...stream,
+                    watched: sample.watched[stream.user_id],
+                }))
+            )
+            .flat();
+
+        const deduped = OracleCurator.deduplicate(points);
+
+        const { encoding, data: encodedStreams } =
+            MachineLearningEncoder.encodeDataset(deduped, {
+                ...LtrPreprocessor.encodingInstructions,
+                watched: EncodingInstruction.BOOLEAN,
+            });
+
+        const xy = encodedStreams.map(Object.values);
+
+        return { encoding, xy };
+    }
+
+    static async getWatchData({
+        inputType,
+        trainingPercent,
+        maxTrainingSize,
+        seed,
+    }: PreprocessOptions): Promise<{
+        data: {
+            training: LtrData;
+            testing: LtrData;
+        };
+        encoding: EncodingKeys;
+    }> {
+        const samples = await WatchDataService.getData();
+
+        let xy: number[][];
+        let encoding: EncodingKeys;
+
+        if (inputType === "pairs") {
+            ({ xy, encoding } = this.convertSamplesToXyPairs(samples));
+        } else if (inputType === "points") {
+            ({ xy, encoding } = this.convertSamplesToXyPoints(samples));
+        }
 
         const trainingLimit = Math.min(
             maxTrainingSize ?? Number.MAX_SAFE_INTEGER,
             (trainingPercent ??
-                CONSTANTS.HEURISTICS.JUICY_PEAR.TRAINING_PERCENT) *
-                encodedPairs.length,
-            encodedPairs.length
+                CONSTANTS.HEURISTICS.JUICY_PEAR.TRAINING_PERCENT) * xy.length,
+            xy.length
         );
 
         let training = [];
         let testing = [];
 
-        if (trainingLimit < encodedPairs.length) {
+        if (trainingLimit < xy.length) {
             if (CONSTANTS.HEURISTICS.JUICY_PEAR.RANDOM_SAMPLE) {
-                const shuffled = Util.shuffleArray(encodedPairs, seed);
+                const shuffled = Util.shuffleArray(xy, seed);
                 training = shuffled.slice(0, trainingLimit);
                 testing = shuffled.slice(trainingLimit);
             } else {
                 [training, testing] = LtrPreprocessor.buildRepresentativeSample(
-                    encodedPairs,
+                    xy,
                     trainingLimit,
-                    seed
+                    seed,
+                    inputType
                 );
             }
         } else {
-            training = Util.shuffleArray(encodedPairs, seed);
+            training = Util.shuffleArray(xy, seed);
             testing = [];
         }
 
         return {
             data: {
-                training: LtrPreprocessor.composeDataset(training),
-                testing: LtrPreprocessor.composeDataset(testing),
+                training: LtrPreprocessor.composeDataset(training, inputType),
+                testing: LtrPreprocessor.composeDataset(testing, inputType),
             },
             encoding,
         };
@@ -349,7 +418,7 @@ export class LtrPreprocessor {
         // Create pairs
         const pairs = [];
 
-        // Pairs build process must NOT be changed independently of PairwiseLTR.scoreAndSortStreams
+        // Pairs build process must NOT be changed independently of this.scoreAndSortStreams
         encoded.forEach((stream1, index1) =>
             encoded.forEach((stream2, index2) => {
                 if (index1 < index2) {

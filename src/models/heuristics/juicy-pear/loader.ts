@@ -1,14 +1,14 @@
 import Browser from "webextension-polyfill";
-import { PairwiseLTR } from "./juicy-pear";
+import { PairwiseLtr } from "./juicy-pear";
 
 // eslint-disable-next-line import/no-mutable-exports
-export let JuicyPearService = PairwiseLTR.loadModel();
+export let JuicyPearService = PairwiseLtr.loadModel();
 
 Browser.storage.local.onChanged.addListener(async (changes) => {
     try {
-        if (changes?.[PairwiseLTR.modelName]) {
+        if (changes?.[PairwiseLtr.modelName]) {
             // Reload the model
-            const promise = PairwiseLTR.loadModel();
+            const promise = PairwiseLtr.loadModel();
             await promise;
             JuicyPearService = promise;
             console.log("Reloaded Juicy Pear model.");
