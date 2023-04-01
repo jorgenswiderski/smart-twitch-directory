@@ -103,6 +103,10 @@ export class PairwiseLtr {
             patience: 3,
             ...hyperOptions,
         };
+
+        if (hyperOptions.earlyStopping) {
+            this.addEarlyStoppingCallback();
+        }
     }
 
     get static() {
@@ -210,7 +214,9 @@ export class PairwiseLtr {
         });
     }
 
-    createEarlyStoppingCallback() {
+    trainingCallbacks = [];
+
+    addEarlyStoppingCallback() {
         const { minDelta, patience } = this.hyperOptions;
 
         const earlyStoppingCallback = {
@@ -232,26 +238,21 @@ export class PairwiseLtr {
             },
         };
 
-        return earlyStoppingCallback;
+        this.trainingCallbacks.push(earlyStoppingCallback);
     }
 
     async train(x: number[][], y: number[][]) {
         // Save the training set size, so we can capture it later if we save the model
         this.datasetSize.training = x.length;
 
-        const { epochs, batchSize, earlyStopping } = this.hyperOptions;
+        const { epochs, batchSize } = this.hyperOptions;
         const dataTensors = this.static.convertDatasetToTensors(x);
         const labelsTensor = tf.tensor2d(y);
-        const callbacks = [];
-
-        if (earlyStopping) {
-            callbacks.push(this.createEarlyStoppingCallback());
-        }
 
         await this.model.fit(dataTensors, labelsTensor, {
             epochs,
             batchSize,
-            callbacks,
+            callbacks: this.trainingCallbacks,
         });
     }
 
@@ -462,19 +463,25 @@ export class PairwiseLtr {
     static async crossValidate(
         hyperOptions: LtrHyperOptions,
         options: LtrOptions = {},
-        numFolds: number = 5,
+        initialNumFolds: number = 5,
         silent: boolean = false,
+        maxLoss: number = 1000,
         seed: number = 42
-    ): Promise<{ loss: number; metric: number; model: PairwiseLtr }> {
+    ): Promise<{
+        loss: number;
+        metric: number;
+        model: PairwiseLtr;
+        adjustedLoss: number;
+    }> {
         if (!silent) {
             console.log(`Cross validating ${this.modelName}...`, {
-                numFolds,
+                numFolds: initialNumFolds,
                 seed,
                 hyperOptions,
             });
         }
 
-        const startTime = moment();
+        let trainingTime = 0;
         const { maxTrainingSize } = hyperOptions;
 
         const {
@@ -482,16 +489,18 @@ export class PairwiseLtr {
             encoding,
         } = await LtrPreprocessor.getWatchData({
             inputType: this.inputType,
-            maxTrainingSize: maxTrainingSize * (numFolds / (numFolds - 1)),
+            maxTrainingSize:
+                maxTrainingSize * (initialNumFolds / (initialNumFolds - 1)),
             trainingPercent: 1,
             seed,
         });
 
-        const chunkSize = Math.floor(data.x.length / numFolds);
+        const chunkSize = Math.floor(data.x.length / initialNumFolds);
 
         let totalLoss = 0;
         let totalMetric = 0;
         let returnModel;
+        let numFolds = initialNumFolds;
 
         for (let i = 0; i < numFolds; i += 1) {
             const testStart = i * chunkSize;
@@ -517,8 +526,10 @@ export class PairwiseLtr {
             model.createModel();
             model.datasetSize.total = data.x.length + extraTraining.x.length;
 
+            const trainingStart = moment();
             // eslint-disable-next-line no-await-in-loop
             await model.train(trainData.x, trainData.y);
+            trainingTime += moment().diff(trainingStart, "seconds", true);
 
             if (!silent) {
                 console.log(
@@ -539,20 +550,40 @@ export class PairwiseLtr {
             totalLoss += loss;
             totalMetric += metric;
             returnModel = model;
+
+            if (i + 1 < numFolds) {
+                const estimatedTrainingDuration =
+                    trainingTime * (initialNumFolds / (i + 1));
+                const trainingSpeedFactor =
+                    0.8106 ** Math.log2(60 / estimatedTrainingDuration);
+
+                if (
+                    loss * trainingSpeedFactor > maxLoss * 3 ||
+                    totalLoss * trainingSpeedFactor > maxLoss * initialNumFolds
+                ) {
+                    console.log("Early stopping due to poor performance.");
+                    numFolds = i + 1;
+                    break;
+                }
+            }
         }
 
         const averageLoss = totalLoss / numFolds;
         const averageMetric = totalMetric / numFolds;
 
+        // Each halving of the training time equates to 18.94% lower loss value
+        const trainingDuration = trainingTime * (initialNumFolds / numFolds);
+        const trainingSpeedFactor = 0.8106 ** Math.log2(60 / trainingDuration);
+        const adjustedLoss = averageLoss * trainingSpeedFactor;
+
         if (!silent) {
             console.log(`Cross-validation results (over ${numFolds} folds):`);
             console.log("Average loss:", averageLoss);
-            console.log("Average metric:", averageMetric);
+            console.log("Adjusted loss:", adjustedLoss);
 
             console.log(
-                `Cross validation completed in ${moment().diff(
-                    startTime,
-                    "seconds"
+                `Cross validation completed in ${trainingTime.toFixed(
+                    0
                 )} seconds.`
             );
         }
@@ -561,6 +592,7 @@ export class PairwiseLtr {
             loss: averageLoss,
             metric: averageMetric,
             model: returnModel,
+            adjustedLoss,
         };
     }
 
@@ -607,9 +639,12 @@ export class PairwiseLtr {
     static async hypertune(
         baseHyperOptions: LtrHyperOptions,
         options: LtrOptions = {},
+        baseTried = {},
         iterations: number = 1000
     ) {
         console.log(`Starting ${this.modelName} hyperparameter tuning...`);
+
+        const tried = JSON.parse(JSON.stringify(baseTried));
 
         const searchSpace = {
             hiddenLayerSizes: [
@@ -644,15 +679,21 @@ export class PairwiseLtr {
                 "swish",
                 "mish",
             ],
-            outputActivation: ["linear", "softmax", "sigmoid", "hardSigmoid"],
-            learningRate: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.2],
-            batchSize: [1, 2, 4, 8, 16, 32, 64],
+            outputActivation: [
+                // "linear",
+                // "softmax",
+                "sigmoid",
+                "hardSigmoid",
+            ],
+            learningRate: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1],
+            batchSize: [4, 8, 16, 32, 64, 128],
+            epochs: [8, 12, 16, 24, 32, 48, 64],
             // embeddingLayerDimension: (numCategories: number) =>
             //     Math.ceil(Math.sqrt(numCategories)),
         };
 
         const choose = (arr) => arr[Math.floor(arr.length * Math.random())];
-        const mutate = (ho: LtrHyperOptions) => {
+        const mutate = (ho: LtrHyperOptions, sSpace: any) => {
             let hyperOptions = { ...ho };
 
             // Mutate a random key
@@ -660,8 +701,8 @@ export class PairwiseLtr {
 
             while (Math.random() < thresh) {
                 thresh /= 3;
-                const key = choose(Object.keys(hyperOptions));
-                const value = choose(searchSpace[key]);
+                const key = choose(Object.keys(sSpace));
+                const value = choose(sSpace[key]);
 
                 console.log(`Mutating ${key} to ${value}`);
                 hyperOptions = {
@@ -675,42 +716,48 @@ export class PairwiseLtr {
 
         let bestLoss = 0.69;
         let bestOptions: LtrHyperOptions = {};
-        const tried = {};
-
-        // initialize options
-        Object.entries(searchSpace).forEach(([key, choices]) => {
-            bestOptions[key] = choose(choices);
-        });
 
         for (let i = 0; i < iterations; i += 1) {
             let hyperOptions: LtrHyperOptions;
 
-            while (!hyperOptions) {
-                const candidate = mutate(bestOptions);
+            if (i === 0) {
+                hyperOptions = { ...baseHyperOptions, ...bestOptions };
+            } else {
+                while (!hyperOptions) {
+                    const candidate = mutate(
+                        { ...baseHyperOptions, ...bestOptions },
+                        searchSpace
+                    );
 
-                if (!tried[JSON.stringify(candidate)]) {
-                    hyperOptions = candidate;
+                    if (!tried[JSON.stringify(candidate)]) {
+                        hyperOptions = candidate;
+                    }
                 }
             }
 
-            // eslint-disable-next-line no-await-in-loop
-            const { loss, model } = await PairwiseLtr.crossValidate(
-                {
-                    ...baseHyperOptions,
-                    ...hyperOptions,
-                },
-                options
-            );
+            const { adjustedLoss, model } =
+                // eslint-disable-next-line no-await-in-loop
+                await PairwiseLtr.crossValidate(
+                    hyperOptions,
+                    options,
+                    undefined,
+                    undefined,
+                    bestLoss
+                );
 
             tried[JSON.stringify(hyperOptions)] = true;
 
-            if (loss < bestLoss) {
-                bestLoss = loss;
+            if (adjustedLoss < bestLoss) {
+                bestLoss = adjustedLoss;
                 bestOptions = hyperOptions;
+
                 console.log(
-                    `New best loss of ${bestLoss.toFixed(4)}!`,
+                    `New best adjusted loss of ${bestLoss.toFixed(4)}!`,
                     model.hyperOptions
                 );
+                console.log({ tried: JSON.stringify(tried) });
+            } else if (i % 10 === 0) {
+                console.log({ tried: JSON.stringify(tried) });
             }
         }
     }
