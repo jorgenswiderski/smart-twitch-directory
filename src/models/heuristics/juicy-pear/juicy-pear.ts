@@ -72,6 +72,8 @@ interface LtrOptions {
     yieldEvery?: number;
 }
 
+// Properties defined here become accessible via TensorModelProxy and therefore JuicyPearService
+// All property values, method inputs, and method outputs must be JSON-serializable!
 export interface IJuicyPearService {
     encoding: EncodingKeys;
     scoreAndSortStreams: (streams: WatchStream[]) => WatchStreamScored[];
