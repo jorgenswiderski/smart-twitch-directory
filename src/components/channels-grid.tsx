@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
 import { TotemPoleService } from "../models/heuristics/totem-pole";
-import { JuicyPearService } from "../models/heuristics/juicy-pear/loader";
+import { JuicyPearService } from "../models/heuristics/juicy-pear/juicy-pear";
 
 const GridContainer = styled.div`
     display: grid;
@@ -12,8 +12,8 @@ const GridContainer = styled.div`
     grid-gap: 10px;
 `;
 
-async function HeuristicService() {
-    return (await JuicyPearService) ?? TotemPoleService;
+function HeuristicService() {
+    return JuicyPearService ?? TotemPoleService;
 }
 
 export function ChannelsGrid() {
@@ -27,7 +27,7 @@ export function ChannelsGrid() {
 
             if (response) {
                 const channelData = response.data.data;
-                const scored = (await HeuristicService()).scoreAndSortStreams(channelData);
+                const scored = await HeuristicService().scoreAndSortStreams(channelData);
                 setChannels(scored);
             }
         } catch (err) {
@@ -102,6 +102,7 @@ export function ChannelsGrid() {
                 // Force change on URL to avoid cache, this allows the thumbnail image to refresh
                 thumbnail_url: `${channel.thumbnail_url}?${Date.now()}`
             })),
+
         [channels, avatars]
     );
 

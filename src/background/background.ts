@@ -3,8 +3,9 @@ import { HelixApi } from "../api/helix";
 import { CONFIG } from "../models/config";
 import { CONSTANTS } from "../models/constants";
 import { MessageService, MessageType } from "../models/messaging";
+import { NotifyService } from "../models/notification-service/notification-service";
 import { ActiveWatch } from "../models/watch-data/types";
-import { WatchDataService } from "../models/watch-data/watch-data";
+import { WatchDataService, WatchStream } from "../models/watch-data/watch-data";
 
 const watchHeartbeats: { [key: string]: number } = {};
 
@@ -14,7 +15,7 @@ MessageService.listen(MessageType.WATCHING_PULSE, ({ data: { userId } }) => {
 
 function getActiveWatch(): ActiveWatch {
     const filtered = Object.entries(watchHeartbeats).filter(
-        ([userId, time]) =>
+        ([, time]) =>
             Date.now() - time < CONSTANTS.TRACKER.HEARTBEAT_INTERVAL + 5000
     );
     const watched: ActiveWatch = {};
@@ -30,17 +31,20 @@ async function saveFrame(userId) {
     try {
         const watched = getActiveWatch();
 
-        if (Object.keys(watched).length <= 0) {
-            return;
-        }
-
         const response = await HelixApi.getStreamsFollowed(userId);
 
         if (!response) {
             return;
         }
 
-        WatchDataService.addEntry(watched, response.data.data);
+        const streams: WatchStream[] = response.data.data;
+        NotifyService.update(watched, streams);
+
+        if (Object.keys(watched).length <= 0) {
+            return;
+        }
+
+        WatchDataService.addEntry(watched, streams);
     } catch (err) {
         console.error(err);
     }

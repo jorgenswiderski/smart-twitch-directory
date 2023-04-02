@@ -13,6 +13,8 @@ import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
 import { LtrInputType, LtrPreprocessor } from "./preprocessor";
 import { CONSTANTS } from "../../constants";
+import { TensorModelProxy } from "../../tensor-model-loader/proxy";
+import { TensorModelHost } from "../../tensor-model-loader/host";
 
 export interface LtrModelStats {
     loss: number;
@@ -70,7 +72,13 @@ interface LtrOptions {
     yieldEvery?: number;
 }
 
-export class PairwiseLtr {
+export interface IJuicyPearService {
+    encoding: EncodingKeys;
+    scoreAndSortStreams: (streams: WatchStream[]) => WatchStreamScored[];
+    getEmbeddingMeanInputs: () => EncodingMeanInputs;
+}
+
+export class PairwiseLtr implements IJuicyPearService {
     model: tf.LayersModel;
 
     static modelName = "juicy-pear";
@@ -791,3 +799,15 @@ export class PairwiseLtr {
         }
     }
 }
+
+export function initJuicyPearService() {
+    // Start JuicyPearService
+    // eslint-disable-next-line no-new
+    new TensorModelHost<typeof PairwiseLtr, PairwiseLtr>(PairwiseLtr);
+}
+
+export const JuicyPearService = new TensorModelProxy<
+    typeof PairwiseLtr,
+    PairwiseLtr,
+    IJuicyPearService
+>(PairwiseLtr).proxy;

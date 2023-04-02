@@ -26,7 +26,12 @@
             "js": ["track-watch.js"]
         }
     ],
-    "permissions": ["https://*.twitch.tv/*", "storage", "unlimitedStorage"],
+    "permissions": [
+        "https://*.twitch.tv/*",
+        "storage",
+        "unlimitedStorage",
+        "notifications"
+    ],
     "browser_specific_settings": {
         "gecko": {
             "id": "jorgen.swiderski@gmail.com"

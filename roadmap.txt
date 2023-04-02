@@ -1,12 +1,9 @@
-Implement a "recommended" stream heuristic. Some ideas for data points include:
- - Higher score for subbed channels
-     - Maybe slightly less for gifted?
- - Log directory clickthroughs and increase the favorability for the clicked stream relative to other live streams
- - Track user watch time, and increase the favorability for the watched stream relative to other live streams
- - Track each stream by category, and recommend based on the stream's current category if there's sufficient data
- - Track how often the user is in the stream while its offline
-     - Need to avoid giving too much weight if the user is afk or just didn't close the tab or something
-     - Consider chat participation?
+Improve algorithm
+    Add more inputs such as
+        view count
+        title
+        featured 
+        is ad
 
 Implement go-live notifications:
  - Notify for all streams that score above some threshold on the heuristic
@@ -17,3 +14,7 @@ Implement go-live notifications:
 Directory UI polish
 
 Settings
+
+Optimize LtrPreprocessor.buildRepresentativeSample
+Optimize directory evaluation
+Fix bug where trainer could train multiple models at once if the first call takes too long

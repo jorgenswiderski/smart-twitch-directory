@@ -1,5 +1,6 @@
 import moment from "moment";
 import {
+    initJuicyPearService,
     LtrModelInfo,
     LtrModelStats,
     PairwiseLtr,
@@ -13,17 +14,16 @@ import {
 async function trainModel() {
     await PairwiseLtr.newModel(
         {
+            maxTrainingSize: 2048,
             maxTrainingDuration: 60,
         },
         {
             autoSave: true,
-            // forceSave: true,
+            forceSave: true,
             yieldEvery: 33,
         }
     );
 }
-
-trainModel();
 
 function getModelAgeInHours({ time }: LtrModelStats): number {
     const created = moment(time);
@@ -112,7 +112,12 @@ async function checkModel() {
     }
 }
 
+function startModelService() {
+    initJuicyPearService();
+}
+
 setInterval(checkModel, 60000);
+startModelService();
 
 // PairwiseLtr.crossValidate(
 //     {

@@ -45,4 +45,19 @@ export class Util {
 
         return newArray;
     }
+
+    static setUnion<T>(a: Set<T>, b: Set<T>): Set<T> {
+        return new Set([...a, ...b]);
+    }
+
+    static setIntersection<T>(a: Set<T>, b: Set<T>): Set<T> {
+        return new Set([...a].filter((x) => b.has(x)));
+    }
+
+    /*
+     * Returns the elements that are in set A, that are absent from set B.
+     */
+    static setDifference<T>(a: Set<T>, b: Set<T>): Set<T> {
+        return new Set([...a].filter((x) => !b.has(x)));
+    }
 }
