@@ -13,21 +13,17 @@ import {
 async function trainModel() {
     await PairwiseLtr.newModel(
         {
-            maxTrainingSize: 2048,
-            batchSize: 128,
-            epochs: 12,
-            hiddenActivation: "elu",
-            hiddenLayerSizes: [8],
-            learningRate: 0.001,
-            outputActivation: "sigmoid",
+            maxTrainingDuration: 60,
         },
         {
             autoSave: true,
-            forceSave: true,
+            // forceSave: true,
             yieldEvery: 33,
         }
     );
 }
+
+trainModel();
 
 function getModelAgeInHours({ time }: LtrModelStats): number {
     const created = moment(time);

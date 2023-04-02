@@ -8,6 +8,7 @@ const HEURISTICS = {
     JUICY_PEAR: {
         TRAINING_PERCENT: 0.75,
         RANDOM_SAMPLE: false,
+        INCREMENTAL_TRAINING_CHUNK_SIZE: 500,
     },
 };
 

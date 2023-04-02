@@ -12,6 +12,7 @@ import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
 import { LtrInputType, LtrPreprocessor } from "./preprocessor";
+import { CONSTANTS } from "../../constants";
 
 export interface LtrModelStats {
     loss: number;
@@ -45,12 +46,6 @@ type ActivationIdentifier =
     | "swish"
     | "mish";
 
-interface LtrOptions {
-    autoSave?: boolean;
-    forceSave?: boolean;
-    yieldEvery?: number;
-}
-
 interface LtrHyperOptions {
     hiddenLayerSizes?: number[];
     outputSize?: number;
@@ -66,6 +61,13 @@ interface LtrHyperOptions {
     earlyStopping?: boolean;
     minDelta?: number;
     patience?: number;
+    maxTrainingDuration?: number;
+}
+
+interface LtrOptions {
+    autoSave?: boolean;
+    forceSave?: boolean;
+    yieldEvery?: number;
 }
 
 export class PairwiseLtr {
@@ -88,13 +90,13 @@ export class PairwiseLtr {
         public options: LtrOptions = {}
     ) {
         this.hyperOptions = {
-            hiddenLayerSizes: [16],
+            hiddenLayerSizes: [8],
             outputSize: 1,
-            hiddenActivation: "relu",
+            hiddenActivation: "elu",
             outputActivation: "sigmoid",
             learningRate: 0.001,
-            epochs: 10,
-            batchSize: 4,
+            epochs: 12,
+            batchSize: 128,
             embeddingLayerDimension: (numCategories: number) =>
                 Math.ceil(Math.sqrt(numCategories)),
             loss: "binaryCrossentropy",
@@ -246,17 +248,36 @@ export class PairwiseLtr {
         // Save the training set size, so we can capture it later if we save the model
         this.datasetSize.training = x.length;
 
-        const { epochs, batchSize } = this.hyperOptions;
+        const trainingStart = Date.now();
+        const { epochs, batchSize, maxTrainingDuration } = this.hyperOptions;
         const { yieldEvery } = this.options;
-        const dataTensors = this.static.convertDatasetToTensors(x);
-        const labelsTensor = tf.tensor2d(y);
+        let cursor = 0;
+        const chunkSize =
+            maxTrainingDuration > 0
+                ? CONSTANTS.HEURISTICS.JUICY_PEAR
+                      .INCREMENTAL_TRAINING_CHUNK_SIZE
+                : Number.MAX_SAFE_INTEGER;
 
-        await this.model.fit(dataTensors, labelsTensor, {
-            epochs,
-            batchSize,
-            callbacks: this.trainingCallbacks,
-            yieldEvery,
-        });
+        while (
+            cursor < x.length &&
+            (!maxTrainingDuration ||
+                Date.now() - trainingStart < maxTrainingDuration * 1000)
+        ) {
+            const slicedX = x.slice(cursor, cursor + chunkSize);
+            const slicedY = y.slice(cursor, cursor + chunkSize);
+            const dataTensors = this.static.convertDatasetToTensors(slicedX);
+            const labelsTensor = tf.tensor2d(slicedY);
+
+            // eslint-disable-next-line no-await-in-loop
+            await this.model.fit(dataTensors, labelsTensor, {
+                epochs,
+                batchSize,
+                callbacks: this.trainingCallbacks,
+                yieldEvery,
+            });
+
+            cursor += chunkSize;
+        }
     }
 
     predict(x: number[][]): tf.Tensor {
@@ -485,7 +506,7 @@ export class PairwiseLtr {
         }
 
         let trainingTime = 0;
-        const { maxTrainingSize } = hyperOptions;
+        const { maxTrainingSize, maxTrainingDuration } = hyperOptions;
 
         const {
             data: { training: data, testing: extraTraining },
@@ -496,6 +517,7 @@ export class PairwiseLtr {
                 maxTrainingSize * (initialNumFolds / (initialNumFolds - 1)),
             trainingPercent: 1,
             seed,
+            maxTrainingDuration,
         });
 
         const chunkSize = Math.floor(data.x.length / initialNumFolds);
@@ -602,9 +624,9 @@ export class PairwiseLtr {
     static async newModel(
         hyperOptions: LtrHyperOptions,
         options: LtrOptions = {}
-    ): Promise<PairwiseLtr> {
+    ): Promise<{ model: PairwiseLtr; trainingTime: number }> {
         const startTime = moment();
-        const { maxTrainingSize } = hyperOptions;
+        const { maxTrainingSize, maxTrainingDuration } = hyperOptions;
 
         const {
             data: { training, testing },
@@ -612,6 +634,7 @@ export class PairwiseLtr {
         } = await LtrPreprocessor.getWatchData({
             inputType: this.inputType,
             maxTrainingSize,
+            maxTrainingDuration,
         });
 
         const model = new this(encoding, hyperOptions, options);
@@ -624,19 +647,22 @@ export class PairwiseLtr {
             )}...`
         );
 
+        const trainingStart = moment();
         await model.train(training.x, training.y);
+        const trainingTime = moment().diff(trainingStart, "seconds", true);
+
         const results = await model.evaluate(testing.x, testing.y);
 
         console.log(results);
 
         console.log(
-            `${this.modelName} training completed in ${moment().diff(
+            `${this.modelName} creation completed in ${moment().diff(
                 startTime,
                 "seconds"
-            )} seconds.`
+            )} seconds (training ${trainingTime.toFixed(0)} seconds).`
         );
 
-        return model;
+        return { model, trainingTime };
     }
 
     static async hypertune(

@@ -1,3 +1,4 @@
+import moment from "moment";
 import { CONSTANTS } from "../../constants";
 import {
     EncodingInstruction,
@@ -18,6 +19,7 @@ export type LtrInputType = "pairs" | "points";
 interface PreprocessOptions {
     inputType: LtrInputType;
     maxTrainingSize?: number;
+    maxTrainingDuration?: number;
     trainingPercent?: number;
     seed?: number;
 }
@@ -154,7 +156,7 @@ export class LtrPreprocessor {
             .sort((a, b) => b.score - a.score);
     }
 
-    static buildRepresentativeSample(
+    static async buildRepresentativeSample(
         data: number[][],
         size: number,
         seed: number,
@@ -244,9 +246,14 @@ export class LtrPreprocessor {
             const entry = pool.splice(entryIdx, 1)[0];
             sample.push(entry);
 
-            // if (sample.length % 100 === 0) {
-            //     console.log(`${sample.length} of ${size}...`);
-            // }
+            if (sample.length % 25 === 0) {
+                // console.log(`${sample.length} of ${size}...`);
+                // Release control of the execution to increase browser responsiveness.
+                // eslint-disable-next-line no-await-in-loop
+                await new Promise<void>((resolve) => {
+                    resolve();
+                });
+            }
         }
 
         // Calculate the MSE
@@ -349,6 +356,7 @@ export class LtrPreprocessor {
         trainingPercent,
         maxTrainingSize,
         seed,
+        maxTrainingDuration,
     }: PreprocessOptions): Promise<{
         data: {
             training: LtrData;
@@ -377,17 +385,27 @@ export class LtrPreprocessor {
         let training = [];
         let testing = [];
 
-        if (trainingLimit < xy.length) {
+        if (trainingLimit < xy.length || maxTrainingDuration) {
             if (CONSTANTS.HEURISTICS.JUICY_PEAR.RANDOM_SAMPLE) {
                 const shuffled = Util.shuffleArray(xy, seed);
                 training = shuffled.slice(0, trainingLimit);
                 testing = shuffled.slice(trainingLimit);
             } else {
-                [training, testing] = LtrPreprocessor.buildRepresentativeSample(
-                    xy,
-                    trainingLimit,
-                    seed,
-                    inputType
+                const start = moment();
+
+                [training, testing] =
+                    await LtrPreprocessor.buildRepresentativeSample(
+                        xy,
+                        trainingLimit,
+                        seed,
+                        inputType
+                    );
+
+                console.log(
+                    `Building subsample took ${moment().diff(
+                        start,
+                        "seconds"
+                    )} seconds`
                 );
             }
         } else {
