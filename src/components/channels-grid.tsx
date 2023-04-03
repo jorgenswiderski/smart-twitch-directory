@@ -13,7 +13,7 @@ const GridContainer = styled.div`
 `;
 
 function HeuristicService() {
-    return JuicyPearService ?? TotemPoleService;
+    return JuicyPearService() ?? TotemPoleService;
 }
 
 export function ChannelsGrid() {

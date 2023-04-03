@@ -1,4 +1,3 @@
-// TODO: Implement origin-tools configHelper instead of this stopgap approach
 function getEnvVarStrict(name: string): string {
     const value = process.env[name];
     // const value = process.env[`REACT_APP_${name}`];
@@ -29,7 +28,15 @@ const DEBUG = {
     DUMP_SAVED_DATA: false,
 };
 
+const NOTIFICATIONS = {
+    NOTIFY_NEW_STREAMS: true,
+    NOTIFY_IMPROVED_STREAMS: true,
+    RELATIVE_QUALITY_MINIMUM: 0.4,
+    IMPROVEMENT_MINIMUM: 0.6,
+};
+
 export const CONFIG = {
     API,
     DEBUG,
+    NOTIFICATIONS,
 };

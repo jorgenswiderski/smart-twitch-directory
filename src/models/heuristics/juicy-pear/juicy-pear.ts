@@ -73,11 +73,12 @@ interface LtrOptions {
 }
 
 // Properties defined here become accessible via TensorModelProxy and therefore JuicyPearService
-// All property values, method inputs, and method outputs must be JSON-serializable!
+// All property values, method inputs, and method outputs must be able to be structured clone serialized!
 export interface IJuicyPearService {
     encoding: EncodingKeys;
-    scoreAndSortStreams: (streams: WatchStream[]) => WatchStreamScored[];
     getEmbeddingMeanInputs: () => EncodingMeanInputs;
+    scoreAndSortStreams: (streams: WatchStream[]) => WatchStreamScored[];
+    predictPair: (streamA: WatchStream, streamB: WatchStream) => number;
 }
 
 export class PairwiseLtr implements IJuicyPearService {
@@ -494,6 +495,18 @@ export class PairwiseLtr implements IJuicyPearService {
             .sort((a, b) => b.score - a.score);
     }
 
+    predictPair(streamA: WatchStream, streamB: WatchStream) {
+        const x = LtrPreprocessor.encodeWatchSample(
+            [streamA, streamB],
+            this.encoding,
+            this.getEmbeddingMeanInputs()
+        );
+
+        const prediction = this.predict(x).dataSync()[0];
+
+        return prediction;
+    }
+
     static async crossValidate(
         hyperOptions: LtrHyperOptions,
         options: LtrOptions = {},
@@ -803,13 +816,13 @@ export class PairwiseLtr implements IJuicyPearService {
 }
 
 export function initJuicyPearService() {
-    // Start JuicyPearService
-    // eslint-disable-next-line no-new
-    new TensorModelHost<typeof PairwiseLtr, PairwiseLtr>(PairwiseLtr);
+    return new TensorModelHost<typeof PairwiseLtr, PairwiseLtr>(PairwiseLtr);
 }
 
-export const JuicyPearService = new TensorModelProxy<
+const tmp = new TensorModelProxy<
     typeof PairwiseLtr,
     PairwiseLtr,
     IJuicyPearService
->(PairwiseLtr).proxy;
+>(PairwiseLtr);
+
+export const JuicyPearService: () => IJuicyPearService = tmp.getProxy.bind(tmp);

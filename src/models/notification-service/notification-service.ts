@@ -1,10 +1,16 @@
 import Browser from "webextension-polyfill";
 import { HelixApi } from "../../api/helix";
+import { CONFIG } from "../config";
 import { JuicyPearService } from "../heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../heuristics/juicy-pear/preprocessor";
 import { EncodingMeanInputs } from "../ml-encoder/ml-encoder";
 import { ActiveWatch } from "../watch-data/types";
 import { WatchStream } from "../watch-data/watch-data";
+
+enum NotificationContext {
+    NEW,
+    IMPROVED,
+}
 
 class NotificationService {
     streams: WatchStream[];
@@ -13,6 +19,30 @@ class NotificationService {
 
     static streamsToIds(streams: WatchStream[]): Set<string> {
         return new Set(streams.map((stream) => stream.id));
+    }
+
+    getWatchedStreams(streams: WatchStream[]) {
+        return streams.filter((stream) =>
+            Object.keys(this.watched).find(
+                (watchedStream) => watchedStream === stream.id
+            )
+        );
+    }
+
+    async getBestWatchedStream(
+        streams: WatchStream[]
+    ): Promise<WatchStream | null> {
+        const watchedStreams = this.getWatchedStreams(streams);
+
+        if (watchedStreams.length === 0) {
+            return null;
+        }
+
+        const sorted = await JuicyPearService().scoreAndSortStreams(
+            watchedStreams
+        );
+
+        return sorted[0];
     }
 
     async notifyNewStreams(streams: WatchStream[]) {
@@ -25,50 +55,58 @@ class NotificationService {
             return;
         }
 
-        const watchedStreams = streams.filter((stream) =>
-            Object.keys(this.watched).find(
-                (watchedStream) => watchedStream === stream.id
-            )
-        );
+        const watchedStreams = this.getWatchedStreams(streams);
 
-        const combined = [...newStreams, ...watchedStreams];
-
-        if (combined.length === 1) {
-            await NotificationService.triggerNotification(combined[0]);
+        if (watchedStreams.length === 0) {
+            await Promise.all(
+                newStreams.map((stream) =>
+                    NotificationService.triggerNotification(
+                        stream,
+                        NotificationContext.NEW
+                    )
+                )
+            );
             return;
         }
 
-        const sorted = await JuicyPearService.scoreAndSortStreams(combined);
+        const bestWatchedStream = await this.getBestWatchedStream(streams);
 
-        for (let i = 0; i < sorted.length; i += 1) {
-            const stream = sorted[i];
+        await Promise.all(
+            newStreams.map(async (stream) => {
+                const prediction = await JuicyPearService().predictPair(
+                    stream,
+                    bestWatchedStream
+                );
 
-            const isNew = newStreams.find(
-                (streamB) => streamB.id === stream.id
-            );
-
-            if (isNew) {
-                // eslint-disable-next-line no-await-in-loop
-                await NotificationService.triggerNotification(stream);
-            } else {
-                break;
-            }
-        }
+                if (
+                    prediction > CONFIG.NOTIFICATIONS.RELATIVE_QUALITY_MINIMUM
+                ) {
+                    await NotificationService.triggerNotification(
+                        stream,
+                        NotificationContext.NEW
+                    );
+                }
+            })
+        );
     }
 
-    // TODO
     async notifyImprovedStreams(streams: WatchStream[]) {
+        const bestWatchedStream = await this.getBestWatchedStream(streams);
+
+        if (!bestWatchedStream) {
+            // Not watching any streams
+            return;
+        }
+
         const existingStreams = streams.filter((stream) =>
             this.streams.find((streamB) => streamB.id === stream.id)
         );
 
-        const encoding = await JuicyPearService.encoding;
+        const encoding = await JuicyPearService().encoding;
         const meanInputs: EncodingMeanInputs =
-            await JuicyPearService.getEmbeddingMeanInputs();
+            await JuicyPearService().getEmbeddingMeanInputs();
 
-        const changedStreams = [];
-
-        existingStreams.filter((stream) => {
+        const changedStreams = existingStreams.filter((stream) => {
             const old = this.streams.find(
                 (streamB) => streamB.id === stream.id
             );
@@ -86,7 +124,40 @@ class NotificationService {
             return hasChanged;
         });
 
-        // console.log("changed streams", changedStreams);
+        if (changedStreams.length === 0) {
+            return;
+        }
+
+        await Promise.all(
+            changedStreams.map(async (stream) => {
+                const old = this.streams.find(
+                    (streamB) => streamB.id === stream.id
+                );
+
+                const prediction = await JuicyPearService().predictPair(
+                    stream,
+                    old
+                );
+
+                if (prediction < CONFIG.NOTIFICATIONS.IMPROVEMENT_MINIMUM) {
+                    return;
+                }
+
+                const predictionB = await JuicyPearService().predictPair(
+                    stream,
+                    bestWatchedStream
+                );
+
+                if (
+                    predictionB > CONFIG.NOTIFICATIONS.RELATIVE_QUALITY_MINIMUM
+                ) {
+                    await NotificationService.triggerNotification(
+                        stream,
+                        NotificationContext.IMPROVED
+                    );
+                }
+            })
+        );
     }
 
     async update(watched: ActiveWatch, streams: WatchStream[]) {
@@ -94,8 +165,12 @@ class NotificationService {
             this.watched = watched;
 
             if (this.streams) {
-                await this.notifyNewStreams(streams);
-                // await this.notifyImprovedStreams(streams);
+                if (CONFIG.NOTIFICATIONS.NOTIFY_NEW_STREAMS) {
+                    await this.notifyNewStreams(streams);
+                }
+                if (CONFIG.NOTIFICATIONS.NOTIFY_IMPROVED_STREAMS) {
+                    await this.notifyImprovedStreams(streams);
+                }
             }
 
             this.streams = streams;
@@ -104,13 +179,10 @@ class NotificationService {
         }
     }
 
-    static async triggerNotification({
-        title,
-        user_name,
-        game_name,
-        user_login,
-        user_id,
-    }: WatchStream) {
+    static async triggerNotification(
+        { title, user_name, game_name, user_login, user_id }: WatchStream,
+        context: NotificationContext
+    ) {
         let avatarUrl: string;
 
         // TODO: optimize avatars
@@ -121,11 +193,18 @@ class NotificationService {
             avatarUrl = data[0].profile_image_url;
         }
 
+        let message;
+
+        if (context === NotificationContext.NEW) {
+            message = `${user_name} just went live streaming ${game_name}!`;
+        } else {
+            message = `${user_name} is now streaming ${game_name}!`;
+        }
+
         Browser.notifications.create({
             type: "basic",
             title: `${title}`,
-            // TODO: conditional message
-            message: `${user_name} just went live streaming ${game_name}!`,
+            message,
             iconUrl: avatarUrl,
         });
 

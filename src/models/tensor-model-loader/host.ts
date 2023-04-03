@@ -17,7 +17,11 @@ export class TensorModelHost<Constructor, Model> {
     constructor(private modelConstructor: Constructor) {
         this.modelName = (this.modelConstructor as any).modelName;
 
-        this.startService().catch(console.error);
+        this.startService()
+            .then(() => {
+                console.log(`Initialized ${this.modelName} service.`);
+            })
+            .catch(console.error);
     }
 
     registerForRemoteAccess() {
@@ -51,9 +55,19 @@ export class TensorModelHost<Constructor, Model> {
 
     async startService(): Promise<void> {
         this.model = await (this.modelConstructor as any).loadModel();
+
+        if (!this.model) {
+            throw new Error(`Failed to load model ${this.modelName}.`);
+        }
+
+        // Add to window context, so proxy class can shortcut the proxy if possible
+        window.models[this.modelName] = this.model;
+
         this.registerForRemoteAccess();
     }
 }
+
+window.models = {};
 
 // Browser.storage.local.onChanged.addListener(async (changes) => {
 //     try {

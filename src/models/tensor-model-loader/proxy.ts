@@ -4,7 +4,7 @@ import { MessageService, MessageType } from "../messaging";
  * TensorModelProxy class creates a proxy object to interact with a TensorModelHost that exists in a different context.
  * It forwards method calls and property access to the remote model through messaging.
  *
- * Note: All inputs and outputs to proxied properties must be JSON-serializable!
+ * All inputs and outputs to proxied properties must be able to be structured clone serialized!
  *
  * @template Constructor - The type of the model constructor.
  * @template Model - The type of the model instance.
@@ -42,7 +42,12 @@ export class TensorModelProxy<Constructor, Model, ModelInterface> {
         }
     }
 
-    proxy: ModelInterface;
+    private proxy: ModelInterface;
+
+    getProxy(): ModelInterface {
+        // Circumvent the proxy if the service is hosted in this context
+        return window?.models?.[this.modelName] ?? this.proxy;
+    }
 
     // Define a proxy object which will augment this class with the interface defined by "ModelInterface"
     // Under the hood the proxy will ferry the function calls via messages to the environment that holds the lock
