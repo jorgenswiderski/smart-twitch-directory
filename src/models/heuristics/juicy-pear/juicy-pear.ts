@@ -464,6 +464,17 @@ export class PairwiseLtr implements IJuicyPearService {
     }
 
     scoreAndSortStreams(streams: WatchStream[]): WatchStreamScored[] {
+        if (streams.length <= 1) {
+            console.log(
+                `${this.static.modelName} scoreAndSortStreams was passed too few streams to make pairs (${streams.length})`
+            );
+
+            return streams.map((stream) => ({
+                ...stream,
+                score: 0.5,
+            }));
+        }
+
         // Prepare inputs
         const meanInputs = this.getEmbeddingMeanInputs();
         const x = LtrPreprocessor.encodeWatchSample(

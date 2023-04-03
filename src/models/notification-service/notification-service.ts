@@ -17,14 +17,10 @@ class NotificationService {
 
     watched: ActiveWatch = {};
 
-    static streamsToIds(streams: WatchStream[]): Set<string> {
-        return new Set(streams.map((stream) => stream.id));
-    }
-
     getWatchedStreams(streams: WatchStream[]) {
         return streams.filter((stream) =>
             Object.keys(this.watched).find(
-                (watchedStream) => watchedStream === stream.id
+                (watchedStream) => watchedStream === stream.user_id
             )
         );
     }
@@ -36,6 +32,10 @@ class NotificationService {
 
         if (watchedStreams.length === 0) {
             return null;
+        }
+
+        if (watchedStreams.length === 1) {
+            return watchedStreams[0];
         }
 
         const sorted = await JuicyPearService().scoreAndSortStreams(
@@ -59,12 +59,14 @@ class NotificationService {
 
         if (watchedStreams.length === 0) {
             await Promise.all(
-                newStreams.map((stream) =>
-                    NotificationService.triggerNotification(
+                newStreams.map((stream) => {
+                    console.log(`${stream.user_login} (uncontested)`);
+
+                    return NotificationService.triggerNotification(
                         stream,
                         NotificationContext.NEW
-                    )
-                )
+                    );
+                })
             );
             return;
         }
