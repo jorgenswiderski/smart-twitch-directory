@@ -1,6 +1,6 @@
 {
     "name": "smart-twitch-directory",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "description": "Find the content you want to watch on twitch!",
     "dependencies": {
         "@tensorflow/tfjs": "^4.2.0",
