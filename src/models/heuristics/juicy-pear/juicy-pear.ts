@@ -15,6 +15,7 @@ import { LtrInputType, LtrPreprocessor } from "./preprocessor";
 import { CONSTANTS } from "../../constants";
 import { TensorModelProxy } from "../../tensor-model-loader/proxy";
 import { TensorModelHost } from "../../tensor-model-loader/host";
+import { log } from "../../logger";
 
 export interface LtrModelStats {
     loss: number;
@@ -244,7 +245,7 @@ export class PairwiseLtr implements IJuicyPearService {
                     earlyStoppingCallback.wait += 1;
                     if (earlyStoppingCallback.wait >= patience) {
                         this.model.stopTraining = true;
-                        console.log(
+                        log(
                             `Training stopped early after ${epoch + 1} epochs.`
                         );
                     }
@@ -304,9 +305,7 @@ export class PairwiseLtr implements IJuicyPearService {
 
             if (forceSave || !stats || results.loss < (stats?.loss ?? 100)) {
                 await this.saveModel(results.loss);
-                console.log(
-                    `Saved ${this.static.modelName} model to local storage.`
-                );
+                log(`Saved ${this.static.modelName} model to local storage.`);
             }
         }
     }
@@ -377,7 +376,7 @@ export class PairwiseLtr implements IJuicyPearService {
 
             return { loss, options, datasetSize, time };
         } catch (err) {
-            console.log(err);
+            log(err);
         }
     }
 
@@ -390,7 +389,7 @@ export class PairwiseLtr implements IJuicyPearService {
 
             return { loss, options, datasetSize, time, model };
         } catch (err) {
-            console.log(err);
+            log(err);
         }
     }
 
@@ -417,7 +416,7 @@ export class PairwiseLtr implements IJuicyPearService {
             const { model, loss, hyperOptions, datasetSize } =
                 await this.getStorage();
 
-            console.log(`Loading ${this.modelName} from local storage...`, {
+            log(`Loading ${this.modelName} from local storage...`, {
                 datasetSize,
                 loss: Number(loss.toFixed(4)),
                 hyperOptions,
@@ -425,7 +424,7 @@ export class PairwiseLtr implements IJuicyPearService {
 
             return await this.fromJSON(model);
         } catch (err) {
-            console.log(err);
+            log(err);
         }
     }
 
@@ -465,7 +464,7 @@ export class PairwiseLtr implements IJuicyPearService {
 
     scoreAndSortStreams(streams: WatchStream[]): WatchStreamScored[] {
         if (streams.length <= 1) {
-            console.log(
+            log(
                 `${this.static.modelName} scoreAndSortStreams was passed too few streams to make pairs (${streams.length})`
             );
 
@@ -532,7 +531,7 @@ export class PairwiseLtr implements IJuicyPearService {
         adjustedLoss: number;
     }> {
         if (!silent) {
-            console.log(`Cross validating ${this.modelName}...`, {
+            log(`Cross validating ${this.modelName}...`, {
                 numFolds: initialNumFolds,
                 seed,
                 hyperOptions,
@@ -576,7 +575,7 @@ export class PairwiseLtr implements IJuicyPearService {
             );
 
             if (!silent) {
-                console.log(
+                log(
                     `Training fold ${i} with training set of ${trainData.x.length}...`
                 );
             }
@@ -591,7 +590,7 @@ export class PairwiseLtr implements IJuicyPearService {
             trainingTime += moment().diff(trainingStart, "seconds", true);
 
             if (!silent) {
-                console.log(
+                log(
                     `Testing fold ${i} with test set of ${testData.x.length}...`
                 );
             }
@@ -603,7 +602,7 @@ export class PairwiseLtr implements IJuicyPearService {
             );
 
             if (!silent) {
-                console.log(`Fold ${i} results: loss=${loss.toFixed(4)}`);
+                log(`Fold ${i} results: loss=${loss.toFixed(4)}`);
             }
 
             totalLoss += loss;
@@ -620,7 +619,7 @@ export class PairwiseLtr implements IJuicyPearService {
                     loss * trainingSpeedFactor > maxLoss * 3 ||
                     totalLoss * trainingSpeedFactor > maxLoss * initialNumFolds
                 ) {
-                    console.log("Early stopping due to poor performance.");
+                    log("Early stopping due to poor performance.");
                     numFolds = i + 1;
                     break;
                 }
@@ -636,11 +635,11 @@ export class PairwiseLtr implements IJuicyPearService {
         const adjustedLoss = averageLoss * trainingSpeedFactor;
 
         if (!silent) {
-            console.log(`Cross-validation results (over ${numFolds} folds):`);
-            console.log("Average loss:", averageLoss);
-            console.log("Adjusted loss:", adjustedLoss);
+            log(`Cross-validation results (over ${numFolds} folds):`);
+            log("Average loss:", averageLoss);
+            log("Adjusted loss:", adjustedLoss);
 
-            console.log(
+            log(
                 `Cross validation completed in ${trainingTime.toFixed(
                     0
                 )} seconds.`
@@ -675,7 +674,7 @@ export class PairwiseLtr implements IJuicyPearService {
         model.createModel();
         model.datasetSize.total = training.x.length + testing.x.length;
 
-        console.log(
+        log(
             `Training ${this.modelName} with options=${JSON.stringify(
                 hyperOptions
             )}...`
@@ -687,9 +686,9 @@ export class PairwiseLtr implements IJuicyPearService {
 
         const results = await model.evaluate(testing.x, testing.y);
 
-        console.log(results);
+        log(results);
 
-        console.log(
+        log(
             `${this.modelName} creation completed in ${moment().diff(
                 startTime,
                 "seconds"
@@ -705,7 +704,7 @@ export class PairwiseLtr implements IJuicyPearService {
         baseTried = {},
         iterations: number = 1000
     ) {
-        console.log(`Starting ${this.modelName} hyperparameter tuning...`);
+        log(`Starting ${this.modelName} hyperparameter tuning...`);
 
         const tried = JSON.parse(JSON.stringify(baseTried));
 
@@ -767,7 +766,7 @@ export class PairwiseLtr implements IJuicyPearService {
                 const key = choose(Object.keys(sSpace));
                 const value = choose(sSpace[key]);
 
-                console.log(`Mutating ${key} to ${value}`);
+                log(`Mutating ${key} to ${value}`);
                 hyperOptions = {
                     ...hyperOptions,
                     [key]: value,
@@ -814,13 +813,13 @@ export class PairwiseLtr implements IJuicyPearService {
                 bestLoss = adjustedLoss;
                 bestOptions = hyperOptions;
 
-                console.log(
+                log(
                     `New best adjusted loss of ${bestLoss.toFixed(4)}!`,
                     model.hyperOptions
                 );
-                console.log({ tried: JSON.stringify(tried) });
+                log({ tried: JSON.stringify(tried) });
             } else if (i % 10 === 0) {
-                console.log({ tried: JSON.stringify(tried) });
+                log({ tried: JSON.stringify(tried) });
             }
         }
     }

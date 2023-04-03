@@ -5,6 +5,7 @@ import { HeuristicService, WatchStreamScored } from "../types";
 import { RandomForest } from "./random-forest";
 import { StreamSagePreprocessor } from "../stream-sage/preprocess";
 import { MlArrayMetrics } from "../../ml-array-metrics";
+import { log } from "../../logger";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
@@ -34,7 +35,7 @@ class CleverCoconut implements HeuristicService {
         this.data.training = scrambled.slice(0, splitPoint);
         this.data.testing = scrambled.slice(splitPoint);
 
-        console.log(
+        log(
             "training",
             this.data.training.length,
             "testing",
@@ -54,7 +55,7 @@ class CleverCoconut implements HeuristicService {
         // Define the target class, aka output param(s)
         const className = "watched";
 
-        console.log(features, className);
+        log(features, className);
 
         // Instantiate the Random Forest
         this.forest = new RandomForest(dataset, {
@@ -72,7 +73,7 @@ class CleverCoconut implements HeuristicService {
 
     eval() {
         const accuracy = this.forest.evaluate(this.data.testing);
-        console.log("accuracy", accuracy);
+        log("accuracy", accuracy);
 
         const trueValues = this.data.testing.map((entry) => entry.watched);
         const predictedValues = this.forest.predict(this.data.testing);
@@ -87,9 +88,9 @@ class CleverCoconut implements HeuristicService {
         );
         const rsq = MlArrayMetrics.rSquared(trueValues, predictedValues);
 
-        console.log("Mean Absolute Error:", mae);
-        console.log("Mean Squared Error:", mse);
-        console.log("R-squared:", rsq);
+        log("Mean Absolute Error:", mae);
+        log("Mean Squared Error:", mse);
+        log("R-squared:", rsq);
     }
 
     predict(stream: WatchStream): number {
@@ -111,6 +112,6 @@ class CleverCoconut implements HeuristicService {
     }
 }
 
-console.log("Loading clever-coconut.ts");
+log("Loading clever-coconut.ts");
 
 export const CleverCoconutService = new CleverCoconut();

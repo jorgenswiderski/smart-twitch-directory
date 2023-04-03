@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import DecisionTree from "decision-tree";
+import { log } from "../../logger";
 
 interface RandomForestOptions {
     numTrees: number;
@@ -41,10 +42,10 @@ export class RandomForest {
             outputFeatures,
         } = this.options;
 
-        console.log("Building Random Forest model...");
+        log("Building Random Forest model...");
 
         const progress = setInterval(() => {
-            console.log(
+            log(
                 `${this.trees.length} / ${numTrees} complete (${Math.floor(
                     (this.trees.length / numTrees) * 100
                 )}%)`
@@ -70,7 +71,7 @@ export class RandomForest {
 
         clearInterval(progress);
 
-        console.log("Random Forest model complete.");
+        log("Random Forest model complete.");
     }
 
     predict(dataset: Record<string, number>[]): number[] {

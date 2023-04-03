@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import { log } from "../../logger";
 import {
     EncodingInstruction,
     EncodingKeys,
@@ -35,7 +36,7 @@ class KNNRegression {
         let sum = 0;
 
         for (let i = 0; i < pointA.length; i++) {
-            sum += (pointA[i] - pointB[i])**2;
+            sum += (pointA[i] - pointB[i]) ** 2;
         }
 
         return Math.sqrt(sum);
@@ -77,7 +78,7 @@ class KNNRegression {
     }
 }
 
-console.log("loading white-knight.ts");
+log("loading white-knight.ts");
 
 export const WhiteKnightService = (async (): Promise<KNNRegression> => {
     const samples = await WatchDataService.getData();

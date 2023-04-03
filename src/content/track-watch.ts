@@ -1,5 +1,6 @@
 import { HelixApi } from "../api/helix";
 import { CONSTANTS } from "../models/constants";
+import { log } from "../models/logger";
 import { MessageService, MessageType } from "../models/messaging";
 
 function isStream() {
@@ -16,11 +17,11 @@ function isStreamPlaying() {
     const video = document.querySelector("video"); // get the video element
 
     if (video && !video.paused) {
-        // console.log("Stream is playing!");
+        // log("Stream is playing!");
         return true;
     }
 
-    // console.log("Stream is paused or not yet started.");
+    // log("Stream is paused or not yet started.");
     return false;
 }
 
@@ -38,7 +39,7 @@ async function getUserIdFromUserName(userName): Promise<void | string> {
 let interval;
 
 function stopTracking() {
-    console.log("Stopped tracking.");
+    log("Stopped tracking.");
     clearInterval(interval);
     interval = undefined;
 }
@@ -51,7 +52,7 @@ async function startTracking(channelName: string) {
             return;
         }
 
-        console.log(`Now tracking ${channelName} with userId=${userId}.`);
+        log(`Now tracking ${channelName} with userId=${userId}.`);
 
         if (interval) {
             clearInterval(interval);
@@ -81,7 +82,7 @@ async function startTracking(channelName: string) {
     }
 }
 
-// console.log("track-watch.ts");
+// log("track-watch.ts");
 
 if (isStream()) {
     startTracking(getStreamName());

@@ -1,5 +1,6 @@
 import moment from "moment";
 import { CONSTANTS } from "../../constants";
+import { log } from "../../logger";
 import {
     EncodingInstruction,
     EncodingKeys,
@@ -247,7 +248,7 @@ export class LtrPreprocessor {
             sample.push(entry);
 
             if (sample.length % 25 === 0) {
-                // console.log(`${sample.length} of ${size}...`);
+                // log(`${sample.length} of ${size}...`);
             }
 
             // Release control of the execution to increase browser responsiveness.
@@ -273,7 +274,7 @@ export class LtrPreprocessor {
         // ].map((entry) => entry.score ** 2);
         // const mse = squares.reduce((sum, a) => sum + a, 0);
 
-        // console.log(`MSE: ${mse}`);
+        // log(`MSE: ${mse}`);
 
         return [sample, pool];
     }
@@ -402,7 +403,7 @@ export class LtrPreprocessor {
                         inputType
                     );
 
-                console.log(
+                log(
                     `Building subsample took ${moment().diff(
                         start,
                         "seconds"

@@ -1,4 +1,5 @@
 import browser from "webextension-polyfill";
+import { log } from "../logger";
 import { ActiveWatch } from "./types";
 
 /*
@@ -69,8 +70,8 @@ class WatchData {
 
         this.data.push(entry);
 
-        console.log("Added new entry:");
-        console.log(entry);
+        log("Added new entry:");
+        log(entry);
 
         this.saveData();
     }
@@ -81,7 +82,7 @@ class WatchData {
 
             this.data = data.watchData || [];
 
-            // console.log(
+            // log(
             //     `Loaded ${this.data.length} entries from local storage.`
             // );
         } catch (err) {

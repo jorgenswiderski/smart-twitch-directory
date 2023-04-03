@@ -1,3 +1,4 @@
+import { log } from "../logger";
 import { WatchDataService } from "../watch-data/watch-data";
 
 export function scoreStreams() {
@@ -22,7 +23,7 @@ export function scoreStreams() {
         });
     });
 
-    console.log(
+    log(
         Object.entries(scores).sort(
             (a, b) => (b[1] as number) - (a[1] as number)
         )

@@ -15,7 +15,7 @@ export class OracleCurator {
             }
         });
 
-        // console.log(
+        // log(
         //     `Removed ${data.length - filtered.length} duplicate entries.`
         // );
 
@@ -61,7 +61,7 @@ export class OracleCurator {
             ).slice(0, nonwatchedEntryLimit);
         }
 
-        // console.log(nonwatchedEntries, watchedEntries);
+        // log(nonwatchedEntries, watchedEntries);
 
         const selected = Util.shuffleArray(
             [...nonwatchedEntries, ...watchedEntries],
@@ -72,7 +72,7 @@ export class OracleCurator {
             (entry) => selected.findIndex((e) => e === entry) < 0
         );
 
-        // console.log(selected, nonselected);
+        // log(selected, nonselected);
 
         return [selected, nonselected];
     }

@@ -1,4 +1,5 @@
 import Browser from "webextension-polyfill";
+import { log } from "../logger";
 import { MessageService, MessageType } from "../messaging";
 
 /**
@@ -20,7 +21,7 @@ export class TensorModelHost<Constructor, Model> {
 
         this.startService()
             .then(() => {
-                console.log(`Initialized ${this.modelName} service.`);
+                log(`Initialized ${this.modelName} service.`);
             })
             .catch(console.error);
     }
@@ -57,10 +58,10 @@ export class TensorModelHost<Constructor, Model> {
             try {
                 if (changes?.[this.modelName]) {
                     await this.loadModel();
-                    console.log("Reloaded Juicy Pear model.");
+                    log("Reloaded Juicy Pear model.");
                 }
             } catch (err) {
-                console.log(err);
+                log(err);
             }
         });
     }

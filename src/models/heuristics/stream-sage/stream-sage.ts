@@ -4,6 +4,7 @@ import { StreamSagePreprocessor } from "./preprocess";
 import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
+import { log } from "../../logger";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
@@ -33,7 +34,7 @@ class StreamSage implements HeuristicService {
         this.data.training = scrambled.slice(0, splitPoint);
         this.data.testing = scrambled.slice(splitPoint);
 
-        console.log(
+        log(
             "training",
             this.data.training.length,
             "testing",
@@ -53,7 +54,7 @@ class StreamSage implements HeuristicService {
         // Define the target class, aka output param(s)
         const className = "watched";
 
-        console.log(features, className);
+        log(features, className);
 
         // Instantiate the decision tree model
         this.dt = new DecisionTree(dataset, className, features);
@@ -65,11 +66,11 @@ class StreamSage implements HeuristicService {
 
     eval() {
         const accuracy = this.dt.evaluate(this.data.testing);
-        console.log("accuracy", accuracy);
+        log("accuracy", accuracy);
 
-        console.log(this.dt.toJSON());
+        log(this.dt.toJSON());
 
-        // console.log("predict", this.dt.predict(this.data.testing[0]));
+        // log("predict", this.dt.predict(this.data.testing[0]));
     }
 
     predict(stream: WatchStream) {
@@ -91,7 +92,7 @@ class StreamSage implements HeuristicService {
     }
 }
 
-console.log("Loading stream-sage.ts");
+log("Loading stream-sage.ts");
 
 export const StreamSageService = new StreamSage();
 

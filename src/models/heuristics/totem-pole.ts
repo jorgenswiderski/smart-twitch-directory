@@ -1,7 +1,6 @@
 import { CONSTANTS } from "../constants";
 import { WatchDataService, WatchStream } from "../watch-data/watch-data";
-import { WatchStreamScored , HeuristicService } from "./types";
-
+import { WatchStreamScored, HeuristicService } from "./types";
 
 class TotemPole implements HeuristicService {
     static calcDecayFactor(time) {
@@ -81,7 +80,7 @@ class TotemPole implements HeuristicService {
             });
         });
 
-        // console.log(scores);
+        // log(scores);
 
         const scoresFinal: { [key: string]: number } = {};
 
@@ -89,7 +88,7 @@ class TotemPole implements HeuristicService {
             scoresFinal[key] = val.num / val.div;
         });
 
-        // console.log(Object.entries(computed).sort((a, b) => b[1] - a[1]));
+        // log(Object.entries(computed).sort((a, b) => b[1] - a[1]));
 
         const scored = channelData.map((channel) => ({
             ...channel,

@@ -6,6 +6,7 @@ import {
     PairwiseLtr,
 } from "../models/heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../models/heuristics/juicy-pear/preprocessor";
+import { log } from "../models/logger";
 import {
     EncodingInstruction,
     EncodingKeys,
@@ -77,12 +78,12 @@ async function checkModel() {
 
         if (data.x.length < 64) {
             // Not enough data yet, fallback to a non-ML model.
-            console.log("Not enough data to train Juicy Pear");
+            log("Not enough data to train Juicy Pear");
             return;
         }
 
         if (!info) {
-            console.log("No Juicy Pear is cached, training a fresh one...");
+            log("No Juicy Pear is cached, training a fresh one...");
             await trainModel();
             return;
         }
@@ -90,21 +91,19 @@ async function checkModel() {
         const ageInHours = getModelAgeInHours(info);
 
         if (ageInHours > 1 && !modelHasCompleteEncoding(info, encoding)) {
-            console.log(
-                "Juicy Pear is using old encodings, training a fresh one..."
-            );
+            log("Juicy Pear is using old encodings, training a fresh one...");
             await trainModel();
             return;
         }
 
         if (ageInHours > 4) {
-            console.log("Juicy Pear is old, training a fresh one...");
+            log("Juicy Pear is old, training a fresh one...");
             await trainModel();
             return;
         }
 
         if (isDatasetMuchBigger(info, data.x.length)) {
-            console.log("Juicy Pear is obsolete, training a fresh one...");
+            log("Juicy Pear is obsolete, training a fresh one...");
             await trainModel();
         }
     } catch (err) {
@@ -194,7 +193,7 @@ startModelService();
 //             })
 //         );
 
-//         console.log(results);
+//         log(results);
 //     } catch (err) {
 //         console.error(err);
 //     }
@@ -211,7 +210,7 @@ startModelService();
 //     maxTrainingSize: 2000,
 // })
 //     .then((bestOptions) => {
-//         console.log("Tuned hyperparameters:", bestOptions);
+//         log("Tuned hyperparameters:", bestOptions);
 //     })
 //     .catch((err) => {
 //         console.error(err);

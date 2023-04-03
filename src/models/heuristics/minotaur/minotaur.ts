@@ -6,6 +6,7 @@ import { HeuristicService, WatchStreamScored } from "../types";
 import { RandomForest } from "./random-forest";
 import { StreamSagePreprocessor } from "../stream-sage/preprocess";
 import { MlArrayMetrics } from "../../ml-array-metrics";
+import { log } from "../../logger";
 
 class Minotaur implements HeuristicService {
     forest: RandomForest;
@@ -27,9 +28,9 @@ class Minotaur implements HeuristicService {
         //         if (this.data.testing.length > 0) {
         //             const { mae, mse, rsq } = this.eval();
 
-        //             console.log("Mean Absolute Error:", mae);
-        //             console.log("Mean Squared Error:", mse);
-        //             console.log("R-squared:", rsq);
+        //             log("Mean Absolute Error:", mae);
+        //             log("Mean Squared Error:", mse);
+        //             log("R-squared:", rsq);
         //         }
         //     })
         //     .catch((err) => console.error(err));
@@ -46,7 +47,7 @@ class Minotaur implements HeuristicService {
         this.data.training = scrambled.slice(0, splitPoint);
         this.data.testing = scrambled.slice(splitPoint);
 
-        console.log(
+        log(
             "training",
             this.data.training.length,
             "testing",
@@ -69,9 +70,9 @@ class Minotaur implements HeuristicService {
         // Define the target class, aka output param(s)
         const className = "watched";
 
-        // console.log(features, className);
+        // log(features, className);
 
-        // console.log("building forest");
+        // log("building forest");
 
         this.options = {
             numEstimators: 25,
@@ -91,7 +92,7 @@ class Minotaur implements HeuristicService {
 
     eval() {
         // const accuracy = this.forest.evaluate(this.data.testing);
-        // console.log("accuracy", accuracy);
+        // log("accuracy", accuracy);
 
         const trueValues = this.data.testing.map((entry) => entry.watched);
         const predictedValues = this.forest.predict(this.data.testing);
@@ -163,11 +164,11 @@ class Minotaur implements HeuristicService {
         const data = await Browser.storage.local.get("minotaurModel");
 
         if (data?.minotaurModel) {
-            console.log("Loading Minotaur from local storage.");
+            log("Loading Minotaur from local storage.");
             return Minotaur.fromJSON(data.minotaurModel.model);
         }
 
-        console.log("Training Minotaur model from scratch...");
+        log("Training Minotaur model from scratch...");
 
         const model = new Minotaur();
         await model.createModel();
@@ -175,7 +176,7 @@ class Minotaur implements HeuristicService {
     }
 
     static async crossValidate(numFolds: number = 5) {
-        console.log(
+        log(
             `Starting cross validation of Minotaur model with ${numFolds} folds...`
         );
 
@@ -214,7 +215,7 @@ class Minotaur implements HeuristicService {
                 ...limited.slice((i + 1) * foldSize),
             ];
 
-            console.log(
+            log(
                 `Creating fold ${i} with ${trainingSet.length} training entries and ${testingSet.length} testing entries...`
             );
 
@@ -236,21 +237,21 @@ class Minotaur implements HeuristicService {
         const avgMse = mses.reduce((sum, mse) => sum + mse, 0) / numFolds;
         const avgRsq = rsqs.reduce((sum, rsq) => sum + rsq, 0) / numFolds;
 
-        console.log("Average Mean Absolute Error:", avgMae);
-        console.log("Average Mean Squared Error:", avgMse);
-        console.log("Average R-squared:", avgRsq);
+        log("Average Mean Absolute Error:", avgMae);
+        log("Average Mean Squared Error:", avgMse);
+        log("Average R-squared:", avgRsq);
 
         const savedMse = await Minotaur.getSavedModelScore();
 
         if (avgMse < savedMse) {
             minotaurInstances[0].preprocessor = preprocessor;
             await Minotaur.saveModel(minotaurInstances[0], avgMse);
-            console.log("Saved model to local storage.");
+            log("Saved model to local storage.");
         }
     }
 }
 
-console.log("Loading Minotaur.ts");
+log("Loading Minotaur.ts");
 
 export const MinotaurService = Minotaur.loadModel();
 

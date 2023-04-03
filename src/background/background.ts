@@ -2,6 +2,7 @@ import Browser from "webextension-polyfill";
 import { HelixApi } from "../api/helix";
 import { CONFIG } from "../models/config";
 import { CONSTANTS } from "../models/constants";
+import { log } from "../models/logger";
 import { MessageService, MessageType } from "../models/messaging";
 import { NotifyService } from "../models/notification-service/notification-service";
 import { ActiveWatch } from "../models/watch-data/types";
@@ -84,7 +85,7 @@ async function loadSavedData(): Promise<void> {
 
         await Browser.storage.local.set(data);
 
-        console.log("Saved data loaded into local storage");
+        log("Saved data loaded into local storage");
     } catch (err) {
         console.error(err);
     }
@@ -97,6 +98,6 @@ if (CONFIG.DEBUG.LOAD_SAVED_DATA) {
 if (CONFIG.DEBUG.DUMP_SAVED_DATA) {
     (async () => {
         const data = await Browser.storage.local.get();
-        console.log(data);
+        log(data);
     })();
 }

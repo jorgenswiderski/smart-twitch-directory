@@ -3,6 +3,7 @@ import { HelixApi } from "../../api/helix";
 import { CONFIG } from "../config";
 import { JuicyPearService } from "../heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../heuristics/juicy-pear/preprocessor";
+import { log } from "../logger";
 import { EncodingMeanInputs } from "../ml-encoder/ml-encoder";
 import { ActiveWatch } from "../watch-data/types";
 import { WatchStream } from "../watch-data/watch-data";
@@ -60,7 +61,7 @@ class NotificationService {
         if (watchedStreams.length === 0) {
             await Promise.all(
                 newStreams.map((stream) => {
-                    console.log(`${stream.user_login} (uncontested)`);
+                    log(`${stream.user_login} (uncontested)`);
 
                     return NotificationService.triggerNotification(
                         stream,
@@ -80,10 +81,7 @@ class NotificationService {
                     bestWatchedStream
                 );
 
-                console.log(
-                    `${stream.user_login} (new) predictions:`,
-                    prediction
-                );
+                log(`${stream.user_login} (new) predictions:`, prediction);
 
                 if (
                     prediction > CONFIG.NOTIFICATIONS.RELATIVE_QUALITY_MINIMUM
@@ -155,7 +153,7 @@ class NotificationService {
                     bestWatchedStream
                 );
 
-                console.log(`${stream.user_login} (improved) predictions:`, [
+                log(`${stream.user_login} (improved) predictions:`, [
                     prediction,
                     predictionB,
                 ]);
@@ -220,7 +218,7 @@ class NotificationService {
             iconUrl: avatarUrl,
         });
 
-        console.log(`Triggered notification (${context}) for ${user_login}.`);
+        log(`Triggered notification (${context}) for ${user_login}.`);
     }
 }
 

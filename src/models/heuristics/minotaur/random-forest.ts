@@ -61,7 +61,7 @@ export class RandomForest {
         const { numEstimators, maxDepth, minNumSamples, maxFeatures } =
             this.options;
 
-        // console.log("Building Random Forest...");
+        // log("Building Random Forest...");
 
         const { x, y } = this.formatDataset();
 
@@ -86,10 +86,10 @@ export class RandomForest {
         // this.model = RandomForestRegression.load(modelJson);
 
         this.model = new RandomForestRegression(options);
-        // console.log(x, y);
+        // log(x, y);
         this.model.train(x, y);
 
-        // console.log("Random Forest complete. LMAO");
+        // log("Random Forest complete. LMAO");
     }
 
     predict(dataset: Record<string, number>[]): number[] {
