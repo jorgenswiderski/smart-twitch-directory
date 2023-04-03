@@ -9,9 +9,13 @@ import { WatchDataService, WatchStream } from "../models/watch-data/watch-data";
 
 const watchHeartbeats: { [key: string]: number } = {};
 
-MessageService.listen(MessageType.WATCHING_PULSE, ({ data: { userId } }) => {
-    watchHeartbeats[userId] = Date.now();
-});
+MessageService.listen(
+    MessageType.WATCHING_PULSE,
+    ({ data: { userId } }, sender, sendResponse) => {
+        watchHeartbeats[userId] = Date.now();
+        sendResponse(true);
+    }
+);
 
 function getActiveWatch(): ActiveWatch {
     const filtered = Object.entries(watchHeartbeats).filter(

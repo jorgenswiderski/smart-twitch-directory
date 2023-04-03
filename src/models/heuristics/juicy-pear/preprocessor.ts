@@ -248,12 +248,13 @@ export class LtrPreprocessor {
 
             if (sample.length % 25 === 0) {
                 // console.log(`${sample.length} of ${size}...`);
-                // Release control of the execution to increase browser responsiveness.
-                // eslint-disable-next-line no-await-in-loop
-                await new Promise<void>((resolve) => {
-                    resolve();
-                });
             }
+
+            // Release control of the execution to increase browser responsiveness.
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise<void>((resolve) => {
+                resolve();
+            });
         }
 
         // Calculate the MSE

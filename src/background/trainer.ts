@@ -14,7 +14,7 @@ import {
 async function trainModel() {
     await PairwiseLtr.newModel(
         {
-            maxTrainingSize: 2048,
+            maxTrainingSize: 8192,
             maxTrainingDuration: 60,
         },
         {

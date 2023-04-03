@@ -78,6 +78,11 @@ class NotificationService {
                     bestWatchedStream
                 );
 
+                console.log(
+                    `${stream.user_login} (new) predictions:`,
+                    prediction
+                );
+
                 if (
                     prediction > CONFIG.NOTIFICATIONS.RELATIVE_QUALITY_MINIMUM
                 ) {
@@ -148,6 +153,11 @@ class NotificationService {
                     bestWatchedStream
                 );
 
+                console.log(`${stream.user_login} (improved) predictions:`, [
+                    prediction,
+                    predictionB,
+                ]);
+
                 if (
                     predictionB > CONFIG.NOTIFICATIONS.RELATIVE_QUALITY_MINIMUM
                 ) {
@@ -208,7 +218,7 @@ class NotificationService {
             iconUrl: avatarUrl,
         });
 
-        console.log(`Triggered notification for ${user_login}.`);
+        console.log(`Triggered notification (${context}) for ${user_login}.`);
     }
 }
 

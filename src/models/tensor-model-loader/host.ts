@@ -1,3 +1,4 @@
+import Browser from "webextension-polyfill";
 import { MessageService, MessageType } from "../messaging";
 
 /**
@@ -51,9 +52,20 @@ export class TensorModelHost<Constructor, Model> {
         );
     }
 
-    release: (value: void | PromiseLike<void>) => void;
+    listenForUpdates() {
+        Browser.storage.local.onChanged.addListener(async (changes) => {
+            try {
+                if (changes?.[this.modelName]) {
+                    await this.loadModel();
+                    console.log("Reloaded Juicy Pear model.");
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        });
+    }
 
-    async startService(): Promise<void> {
+    async loadModel() {
         this.model = await (this.modelConstructor as any).loadModel();
 
         if (!this.model) {
@@ -62,23 +74,13 @@ export class TensorModelHost<Constructor, Model> {
 
         // Add to window context, so proxy class can shortcut the proxy if possible
         window.models[this.modelName] = this.model;
+    }
 
+    async startService(): Promise<void> {
+        await this.loadModel();
         this.registerForRemoteAccess();
+        this.listenForUpdates();
     }
 }
 
 window.models = {};
-
-// Browser.storage.local.onChanged.addListener(async (changes) => {
-//     try {
-//         if (changes?.[PairwiseLtr.modelName]) {
-//             // Reload the model
-//             const promise = PairwiseLtr.loadModel();
-//             await promise;
-//             JuicyPearService = promise;
-//             console.log("Reloaded Juicy Pear model.");
-//         }
-//     } catch (err) {
-//         console.log(err);
-//     }
-// });
