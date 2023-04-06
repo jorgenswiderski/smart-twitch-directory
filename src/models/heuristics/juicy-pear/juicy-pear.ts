@@ -11,7 +11,7 @@ import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
-import { LtrInputType, LtrPreprocessor } from "./preprocessor";
+import { LtrData, LtrInputType, LtrPreprocessor } from "./preprocessor";
 import { CONSTANTS } from "../../constants";
 import { TensorModelProxy } from "../../tensor-model-loader/proxy";
 import { TensorModelHost } from "../../tensor-model-loader/host";
@@ -533,7 +533,11 @@ export class PairwiseLtr implements IJuicyPearService {
         initialNumFolds: number = 5,
         silent: boolean = false,
         maxLoss: number = 1000,
-        seed: number = 42
+        seed: number = 42,
+        preloadedData?: {
+            encoding: EncodingKeys;
+            data: { training: LtrData; testing: LtrData };
+        }
     ): Promise<{
         loss: number;
         metric: number;
@@ -551,17 +555,28 @@ export class PairwiseLtr implements IJuicyPearService {
         let trainingTime = 0;
         const { maxTrainingSize, maxTrainingDuration } = hyperOptions;
 
-        const {
-            data: { training: data, testing: extraTraining },
-            encoding,
-        } = await LtrPreprocessor.getWatchData({
-            inputType: this.inputType,
-            maxTrainingSize:
-                maxTrainingSize * (initialNumFolds / (initialNumFolds - 1)),
-            trainingPercent: 1,
-            seed,
-            maxTrainingDuration,
-        });
+        let data: LtrData;
+        let extraTraining: LtrData;
+        let encoding: EncodingKeys;
+
+        if (preloadedData) {
+            ({
+                data: { training: data, testing: extraTraining },
+                encoding,
+            } = preloadedData);
+        } else {
+            ({
+                data: { training: data, testing: extraTraining },
+                encoding,
+            } = await LtrPreprocessor.getWatchData({
+                inputType: this.inputType,
+                maxTrainingSize:
+                    maxTrainingSize * (initialNumFolds / (initialNumFolds - 1)),
+                trainingPercent: 1,
+                seed,
+                maxTrainingDuration,
+            }));
+        }
 
         const chunkSize = Math.floor(data.x.length / initialNumFolds);
 
@@ -758,11 +773,20 @@ export class PairwiseLtr implements IJuicyPearService {
                 "hardSigmoid",
             ],
             learningRate: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1],
-            batchSize: [4, 8, 16, 32, 64, 128],
-            epochs: [8, 12, 16, 24, 32, 48, 64],
+            batchSize: [4, 8, 16, 32, 64, 128, 256, 512],
+            // epochs: [6, 8, 12, 16, 24, 32, 48, 64],
             // embeddingLayerDimension: (numCategories: number) =>
             //     Math.ceil(Math.sqrt(numCategories)),
         };
+
+        // Pregenerate the dataset so we don't have to do it on every iteration
+        const preloadedData = await LtrPreprocessor.getWatchData({
+            inputType: this.inputType,
+            trainingPercent: 1,
+            seed: 42,
+            // force enable sampling of the data set, sorting the data into an order that can be cut short arbitrarily without causing skew
+            maxTrainingDuration: 1,
+        });
 
         const choose = (arr) => arr[Math.floor(arr.length * Math.random())];
         const mutate = (ho: LtrHyperOptions, sSpace: any) => {
@@ -814,7 +838,9 @@ export class PairwiseLtr implements IJuicyPearService {
                     options,
                     undefined,
                     undefined,
-                    bestLoss
+                    bestLoss,
+                    42,
+                    preloadedData
                 );
 
             tried[JSON.stringify(hyperOptions)] = true;

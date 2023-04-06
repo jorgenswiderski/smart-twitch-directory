@@ -25,7 +25,7 @@ interface PreprocessOptions {
     seed?: number;
 }
 
-interface LtrData {
+export interface LtrData {
     x: number[][];
     y: number[][];
 }
@@ -140,6 +140,55 @@ export class LtrPreprocessor {
         return stats;
     }
 
+    static updateStats(
+        stats: SamplerStats,
+        entry: number[],
+        newLength: number,
+        inputType: LtrInputType
+    ): SamplerStats {
+        const newStats = JSON.parse(JSON.stringify(stats));
+
+        if (newLength > 1) {
+            const factor = (newLength - 1) / newLength;
+
+            Object.values(newStats.streamers).forEach((streamerStats: any) => {
+                // eslint-disable-next-line no-param-reassign
+                streamerStats.all *= factor;
+                // eslint-disable-next-line no-param-reassign
+                streamerStats.positive *= factor;
+            });
+
+            Object.values(newStats.categories).forEach((catStats: any) => {
+                // eslint-disable-next-line no-param-reassign
+                catStats.all *= factor;
+                // eslint-disable-next-line no-param-reassign
+                catStats.positive *= factor;
+            });
+        }
+
+        const increment = 1 / newLength;
+
+        newStats.streamers[entry[0]].all += increment;
+        newStats.categories[entry[1]].all += increment;
+
+        if (inputType === "pairs") {
+            newStats.streamers[entry[2]].all += increment;
+            newStats.categories[entry[3]].all += increment;
+
+            newStats.streamers[entry[0]].positive += increment;
+            newStats.categories[entry[1]].positive += increment;
+            // newStats.streamers[entry[2]].positive -= increment;
+            // newStats.categories[entry[3]].positive -= increment;
+        } else if (inputType === "points") {
+            if (entry[2] > 0) {
+                newStats.streamers[entry[0]].positive += increment;
+                newStats.categories[entry[1]].positive += increment;
+            }
+        }
+
+        return newStats;
+    }
+
     static getNetScores(
         type: "streamers" | "categories",
         stats: SamplerStats,
@@ -177,41 +226,43 @@ export class LtrPreprocessor {
             inputType
         );
 
-        const pool: number[][] = Util.shuffleArray(
-            JSON.parse(JSON.stringify(data)),
-            seed
-        );
+        let currentStats = JSON.parse(JSON.stringify(stats));
 
         const sample: number[][] = [];
-
-        let searchKeys = {
-            positive: {
-                streamers: 0,
-                categories: 1,
-            },
-            negative: {
-                streamers: 2,
-                categories: 3,
-            },
+        const pool: Record<number, number[]> = {};
+        const poolDirectory = {
+            streamers: {},
+            categories: {},
         };
 
-        if (inputType === "points") {
-            searchKeys = {
-                ...searchKeys,
-                negative: {
-                    ...searchKeys.positive,
-                },
-            };
-        }
+        Util.shuffleArray(
+            JSON.parse(JSON.stringify(data)) as number[][],
+            seed
+        ).forEach((entry, idx) => {
+            pool[idx] = entry;
+
+            poolDirectory.streamers[entry[0]] = poolDirectory.streamers[
+                entry[0]
+            ] || { positive: [], negative: [] };
+            poolDirectory.streamers[entry[0]].positive.push(idx);
+            poolDirectory.categories[entry[1]] = poolDirectory.categories[
+                entry[1]
+            ] || { positive: [], negative: [] };
+            poolDirectory.categories[entry[1]].positive.push(idx);
+
+            if (inputType === "pairs") {
+                poolDirectory.streamers[entry[2]] = poolDirectory.streamers[
+                    entry[2]
+                ] || { positive: [], negative: [] };
+                poolDirectory.streamers[entry[2]].negative.push(idx);
+                poolDirectory.categories[entry[3]] = poolDirectory.categories[
+                    entry[3]
+                ] || { positive: [], negative: [] };
+                poolDirectory.categories[entry[3]].negative.push(idx);
+            }
+        });
 
         for (let i = 0; i < size; i += 1) {
-            const currentStats = this.calculateStats(
-                sample,
-                uniqueStreamers,
-                uniqueCategories,
-                inputType
-            );
-
             const streamScores = this.getNetScores(
                 "streamers",
                 stats,
@@ -239,13 +290,22 @@ export class LtrPreprocessor {
                     ? "positive"
                     : "negative";
 
-            const searchIndex = searchKeys[polarity][pickType];
+            let entry;
 
-            const entryIdx = pool.findIndex(
-                (entry) => entry[searchIndex] === id
-            );
-            const entry = pool.splice(entryIdx, 1)[0];
+            while (!entry) {
+                const entryIdx = poolDirectory[pickType][id][polarity].shift();
+                entry = pool[entryIdx];
+                delete pool[entryIdx];
+            }
+
             sample.push(entry);
+
+            currentStats = this.updateStats(
+                currentStats,
+                entry,
+                sample.length,
+                inputType
+            );
 
             if (sample.length % 25 === 0) {
                 // log(`${sample.length} of ${size}...`);
@@ -259,13 +319,6 @@ export class LtrPreprocessor {
         }
 
         // Calculate the MSE
-        // const currentStats = this.calculateStats(
-        //     sample,
-        //     uniqueStreamers,
-        //     uniqueCategories,
-        //     inputType
-        // );
-
         // const squares = [
         //     ...this.getNetScores("streamers", stats, currentStats),
         //     ...this.getNetScores("categories", stats, currentStats),
@@ -276,7 +329,7 @@ export class LtrPreprocessor {
 
         // log(`MSE: ${mse}`);
 
-        return [sample, pool];
+        return [sample, Object.values(pool)];
     }
 
     static convertSamplesToXyPairs(samples: WatchSample[]) {
@@ -404,10 +457,9 @@ export class LtrPreprocessor {
                     );
 
                 log(
-                    `Building subsample took ${moment().diff(
-                        start,
-                        "seconds"
-                    )} seconds`
+                    `Building subsample took ${moment()
+                        .diff(start, "seconds", true)
+                        .toFixed(3)} seconds`
                 );
             }
         } else {
