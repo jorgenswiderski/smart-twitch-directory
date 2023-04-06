@@ -1,5 +1,5 @@
 import Browser from "webextension-polyfill";
-import { log } from "../logger";
+import { error, log } from "../logger";
 import { MessageService, MessageType } from "../messaging";
 
 /**
@@ -23,7 +23,7 @@ export class TensorModelHost<Constructor, Model> {
             .then(() => {
                 log(`Initialized ${this.modelName} service.`);
             })
-            .catch(console.error);
+            .catch(error);
     }
 
     registerForRemoteAccess() {

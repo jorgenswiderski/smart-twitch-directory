@@ -23,7 +23,7 @@ export class StreamSagePreprocessor {
                     resolve();
                 })
                 .catch((err) => {
-                    console.error(err);
+                    error(err);
                     reject();
                 });
         });

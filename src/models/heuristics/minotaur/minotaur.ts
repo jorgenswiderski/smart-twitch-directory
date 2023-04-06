@@ -33,7 +33,7 @@ class Minotaur implements HeuristicService {
         //             log("R-squared:", rsq);
         //         }
         //     })
-        //     .catch((err) => console.error(err));
+        //     .catch((err) => error(err));
     }
 
     async prepareDataset() {
@@ -256,5 +256,5 @@ log("Loading Minotaur.ts");
 export const MinotaurService = Minotaur.loadModel();
 
 // Minotaur.crossValidate().catch((err) => {
-//     console.error(err);
+//     error(err);
 // });

@@ -34,9 +34,7 @@ export class RandomForest {
         if (json) {
             this.model = RandomForestRegression.load(json);
         } else {
-            this.loading = this.createModel().catch((error) =>
-                console.error(error)
-            );
+            this.loading = this.createModel().catch((error) => error(error));
         }
     }
 

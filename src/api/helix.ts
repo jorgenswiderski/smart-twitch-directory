@@ -1,5 +1,6 @@
 import axios from "axios";
 import { CONFIG } from "../models/config";
+import { error } from "../models/logger";
 
 export const HelixApi = {
     getStreams(options: {
@@ -30,7 +31,7 @@ export const HelixApi = {
                 },
             })
             .catch((err) => {
-                console.error(err);
+                error(err);
             });
     },
 
@@ -46,7 +47,7 @@ export const HelixApi = {
                 },
             })
             .catch((err) => {
-                console.error(err);
+                error(err);
             });
     },
 
@@ -63,7 +64,7 @@ export const HelixApi = {
                 }
             )
             .catch((error) => {
-                console.error(error);
+                error(error);
             });
     },
 };

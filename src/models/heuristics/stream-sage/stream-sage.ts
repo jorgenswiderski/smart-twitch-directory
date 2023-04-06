@@ -22,7 +22,7 @@ class StreamSage implements HeuristicService {
 
     constructor() {
         this.preprocessor = new StreamSagePreprocessor();
-        this.createModel().catch((err) => console.error(err));
+        this.createModel().catch((err) => error(err));
     }
 
     async prepareDataset() {
@@ -97,5 +97,5 @@ log("Loading stream-sage.ts");
 export const StreamSageService = new StreamSage();
 
 StreamSageService.createModel().catch((err) => {
-    console.error(err);
+    error(err);
 });

@@ -2,7 +2,7 @@ import Browser from "webextension-polyfill";
 import { HelixApi } from "../api/helix";
 import { CONFIG } from "../models/config";
 import { CONSTANTS } from "../models/constants";
-import { log } from "../models/logger";
+import { error, log } from "../models/logger";
 import { MessageService, MessageType } from "../models/messaging";
 import { NotifyService } from "../models/notification-service/notification-service";
 import { ActiveWatch } from "../models/watch-data/types";
@@ -51,7 +51,7 @@ async function saveFrame(userId) {
 
         WatchDataService.addEntry(watched, streams);
     } catch (err) {
-        console.error(err);
+        error(err);
     }
 }
 
@@ -74,9 +74,7 @@ async function init() {
     startTracking(userId);
 }
 
-init().catch((err) => {
-    console.error(err);
-});
+init().catch(error);
 
 async function loadSavedData(): Promise<void> {
     try {
@@ -87,7 +85,7 @@ async function loadSavedData(): Promise<void> {
 
         log("Saved data loaded into local storage");
     } catch (err) {
-        console.error(err);
+        error(err);
     }
 }
 

@@ -3,7 +3,7 @@ import { HelixApi } from "../../api/helix";
 import { CONFIG } from "../config";
 import { JuicyPearService } from "../heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../heuristics/juicy-pear/preprocessor";
-import { log } from "../logger";
+import { error, log } from "../logger";
 import { EncodingMeanInputs } from "../ml-encoder/ml-encoder";
 import { ActiveWatch } from "../watch-data/types";
 import { WatchStream } from "../watch-data/watch-data";
@@ -198,7 +198,7 @@ class NotificationService {
 
             this.streams = streams;
         } catch (err) {
-            console.error(err);
+            error(err);
         }
     }
 

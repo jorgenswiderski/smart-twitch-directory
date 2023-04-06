@@ -5,6 +5,7 @@ import { ChannelCard } from "./channel-card";
 import { HelixApi } from "../api/helix";
 import { TotemPoleService } from "../models/heuristics/totem-pole";
 import { JuicyPearService } from "../models/heuristics/juicy-pear/juicy-pear";
+import { error } from "../models/logger";
 
 const GridContainer = styled.div`
     display: grid;
@@ -31,7 +32,7 @@ export function ChannelsGrid() {
                 setChannels(scored);
             }
         } catch (err) {
-            console.error(err)
+            error(err)
         }
     }
 
@@ -47,9 +48,7 @@ export function ChannelsGrid() {
                         setUserId(response.data.data[0].id);
                     }
                 })
-                .catch((err) => {
-                    console.error(err);
-                });
+                .catch(error);
             return;
         }
 

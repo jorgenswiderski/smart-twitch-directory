@@ -8,6 +8,9 @@ module.exports = {
         {
             extends: ['airbnb-typescript', 'prettier'],
             files: ['*.ts', '*.tsx'],
+            rules: {
+                '@typescript-eslint/lines-between-class-members': 'off',
+            }
         },
     ],
     parserOptions: {
@@ -21,6 +24,7 @@ module.exports = {
         'import/prefer-default-export': 'off',
         'import/no-default-export': 'error',
         'import/no-extraneous-dependencies': 'off', // disabled now because it doesn't work, some sort of config issue
+        'no-console': 'error',
     },
     settings: {
         "import/parsers": {

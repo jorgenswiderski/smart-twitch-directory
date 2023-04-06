@@ -6,7 +6,7 @@ import {
     PairwiseLtr,
 } from "../models/heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../models/heuristics/juicy-pear/preprocessor";
-import { log } from "../models/logger";
+import { error, log } from "../models/logger";
 import {
     EncodingInstruction,
     EncodingKeys,
@@ -106,7 +106,7 @@ async function checkModel() {
             await trainModel();
         }
     } catch (err) {
-        console.error(err);
+        error(err);
     }
 }
 
@@ -127,7 +127,7 @@ startModelService();
 //         autoSave: true,
 //     }
 // ).catch((err) => {
-//     console.error(err);
+//     error(err);
 // });
 
 // 0.999
@@ -149,7 +149,7 @@ startModelService();
 //         `{"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.005,\\"outputActivation\\":\\"hardSigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":4,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true}`
 //     )
 // ).catch((err) => {
-//     console.error(err);
+//     error(err);
 // });
 
 // async function evalModel(size: number) {
@@ -194,7 +194,7 @@ startModelService();
 
 //         log(results);
 //     } catch (err) {
-//         console.error(err);
+//         error(err);
 //     }
 // })();
 
@@ -212,7 +212,7 @@ startModelService();
 //         log("Tuned hyperparameters:", bestOptions);
 //     })
 //     .catch((err) => {
-//         console.error(err);
+//         error(err);
 //     });
 
 // (async () => {

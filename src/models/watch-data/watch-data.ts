@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import { debug, log } from "../logger";
+import { debug, error, log } from "../logger";
 import { ActiveWatch } from "./types";
 import { WatchDataCompressor } from "./compressor";
 import { Util } from "../util";
@@ -94,7 +94,7 @@ class WatchData {
 
             debug(`Loaded ${this.data.length} entries from local storage.`);
         } catch (err) {
-            console.error(err);
+            error(err);
         }
     }
 
@@ -103,7 +103,7 @@ class WatchData {
             const deflated = await WatchDataCompressor.deflate(this.data);
             await browser.storage.local.set({ watchDataCompressed: deflated });
         } catch (err) {
-            console.error(err);
+            error(err);
         }
     }
 

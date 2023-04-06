@@ -23,7 +23,7 @@ class CleverCoconut implements HeuristicService {
 
     constructor() {
         this.preprocessor = new StreamSagePreprocessor();
-        this.createModel().catch((err) => console.error(err));
+        this.createModel().catch((err) => error(err));
     }
 
     async prepareDataset() {

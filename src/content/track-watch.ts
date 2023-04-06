@@ -1,6 +1,6 @@
 import { HelixApi } from "../api/helix";
 import { CONSTANTS } from "../models/constants";
-import { log } from "../models/logger";
+import { error, log } from "../models/logger";
 import { MessageService, MessageType } from "../models/messaging";
 
 function isStream() {
@@ -78,7 +78,7 @@ async function startTracking(channelName: string) {
             }
         }, CONSTANTS.TRACKER.HEARTBEAT_INTERVAL);
     } catch (err) {
-        console.error(err);
+        error(err);
     }
 }
 

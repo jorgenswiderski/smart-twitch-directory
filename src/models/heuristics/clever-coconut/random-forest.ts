@@ -19,7 +19,7 @@ export class RandomForest {
         private dataset: Record<string, number>[],
         private options: RandomForestOptions
     ) {
-        this.createModel().catch((error) => console.error(error));
+        this.createModel().catch((error) => error(error));
     }
 
     private bootstrapDataset(): Record<string, number>[] {

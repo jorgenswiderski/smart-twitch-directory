@@ -13,8 +13,12 @@ class Logger {
     }
 
     static debug = (...args: any[]) => this.base(console.debug, ...args);
-
     static log = (...args: any[]) => this.base(console.log, ...args);
+
+    static error = (...args: any[]) => {
+        this.log(`!!! Logged an error !!!`);
+        return console.error(...args);
+    };
 }
 
-export const { log, debug } = Logger;
+export const { log, debug, error } = Logger;
