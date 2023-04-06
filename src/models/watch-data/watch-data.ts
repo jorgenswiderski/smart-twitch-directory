@@ -1,6 +1,8 @@
 import browser from "webextension-polyfill";
 import { debug, log } from "../logger";
 import { ActiveWatch } from "./types";
+import { WatchDataCompressor } from "./compressor";
+import { Util } from "../util";
 
 /*
                 // "id": "41997648171",
@@ -77,13 +79,20 @@ class WatchData {
 
     async loadData() {
         try {
-            const data = await browser.storage.local.get("watchData");
+            const cData = await browser.storage.local.get(
+                "watchDataCompressed"
+            );
 
-            this.data = data.watchData || [];
+            if (cData.watchDataCompressed) {
+                const inflated = await WatchDataCompressor.inflate(
+                    cData.watchDataCompressed
+                );
+                this.data = inflated;
+            } else {
+                this.data = [];
+            }
 
-            // log(
-            //     `Loaded ${this.data.length} entries from local storage.`
-            // );
+            debug(`Loaded ${this.data.length} entries from local storage.`);
         } catch (err) {
             console.error(err);
         }
@@ -91,7 +100,8 @@ class WatchData {
 
     async saveData() {
         try {
-            await browser.storage.local.set({ watchData: this.data });
+            const deflated = await WatchDataCompressor.deflate(this.data);
+            await browser.storage.local.set({ watchDataCompressed: deflated });
         } catch (err) {
             console.error(err);
         }

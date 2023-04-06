@@ -311,11 +311,8 @@ export class LtrPreprocessor {
                 // log(`${sample.length} of ${size}...`);
             }
 
-            // Release control of the execution to increase browser responsiveness.
             // eslint-disable-next-line no-await-in-loop
-            await new Promise<void>((resolve) => {
-                resolve();
-            });
+            await Util.yield();
         }
 
         // Calculate the MSE

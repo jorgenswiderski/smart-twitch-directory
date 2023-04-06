@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import DecisionTree from "decision-tree";
 import { log } from "../../logger";
+import { Util } from "../../util";
 
 interface RandomForestOptions {
     numTrees: number;
@@ -64,9 +65,8 @@ export class RandomForest {
             this.trees.push(tree);
 
             // Await a timeout to avoid blocking the browser
-            await new Promise<void>((resolve) =>
-                setTimeout(() => resolve(), 0)
-            );
+            // eslint-disable-next-line no-await-in-loop
+            await Util.yield();
         }
 
         clearInterval(progress);
