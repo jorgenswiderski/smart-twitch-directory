@@ -46,7 +46,7 @@ class NotificationService {
         return sorted[0];
     }
 
-    static async notifyUncontestStreams(streams: WatchStream[]) {
+    static async notifyUncontestedStreams(streams: WatchStream[]) {
         await Promise.all(
             streams.map(async (stream) => {
                 const prediction = await JuicyPearService().predictSingle(
@@ -81,7 +81,7 @@ class NotificationService {
         const watchedStreams = this.getWatchedStreams(streams);
 
         if (watchedStreams.length === 0) {
-            await NotificationService.notifyUncontestStreams(newStreams);
+            await NotificationService.notifyUncontestedStreams(newStreams);
             return;
         }
 
