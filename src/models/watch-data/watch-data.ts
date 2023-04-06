@@ -1,5 +1,5 @@
 import browser from "webextension-polyfill";
-import { log } from "../logger";
+import { debug, log } from "../logger";
 import { ActiveWatch } from "./types";
 
 /*
@@ -70,8 +70,7 @@ class WatchData {
 
         this.data.push(entry);
 
-        log("Added new entry:");
-        log(entry);
+        debug("Added new entry:", entry);
 
         this.saveData();
     }

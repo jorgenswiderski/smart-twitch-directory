@@ -1,10 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { ChannelsGrid } from '../components/channels-grid';
-import { log } from '../models/logger';
+import { debug } from '../models/logger';
 
-log('Loading directory.tsx...');
-log('Loading grid...');
+debug('Loading directory.tsx...');
 
 function injectChannelsGrid(header) {
     const liveChannelsContent = header.nextElementSibling;

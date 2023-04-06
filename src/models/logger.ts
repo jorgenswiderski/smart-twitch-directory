@@ -1,16 +1,20 @@
 /* eslint-disable no-console */
 class Logger {
-    static log(...args: any[]) {
+    static base(func: Function, ...args: any[]) {
         if (args.length === 1 && typeof args[0] === "string") {
-            console.log(
+            func(
                 `%c[TDN]%c: ${args[0]}`,
                 "color: orange; font-weight: bold;",
                 "color: initial; font-weight: initial;"
             );
         } else {
-            console.log(...["[TDN]: ", ...args]);
+            func(...["[TDN]:", ...args]);
         }
     }
+
+    static debug = (...args: any[]) => this.base(console.debug, ...args);
+
+    static log = (...args: any[]) => this.base(console.log, ...args);
 }
 
-export const { log } = Logger;
+export const { log, debug } = Logger;

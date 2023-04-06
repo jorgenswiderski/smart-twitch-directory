@@ -16,12 +16,11 @@ async function trainModel() {
     await PairwiseLtr.newModel(
         {
             maxTrainingSize: 8192,
-            maxTrainingDuration: 60,
         },
         {
             autoSave: true,
             forceSave: true,
-            yieldEvery: 33,
+            yieldEvery: 1,
         }
     );
 }
@@ -120,9 +119,8 @@ startModelService();
 
 // PairwiseLtr.crossValidate(
 //     {
+//         maxTrainingSize: 16384,
 //         hiddenLayerSizes: [16],
-//         // maxTrainingSize: 2709,
-//         maxTrainingSize: 512,
 //         batchSize: 16,
 //     },
 //     {
@@ -132,22 +130,23 @@ startModelService();
 //     console.error(err);
 // });
 
-// 0.0183
+// 0.999
 // PairwiseLtr.hypertune(
 //     {
-//         maxTrainingSize: 2048,
-//         // maxTrainingSize: 2709,
+//         maxTrainingSize: 8192,
+//         // maxTrainingDuration: 60,
+//         epochs: 200,
+//         patience: 5,
 
 //         batchSize: 128,
-//         epochs: 12,
-//         hiddenActivation: "elu",
+//         hiddenActivation: "mish",
 //         hiddenLayerSizes: [8],
 //         learningRate: 0.001,
 //         outputActivation: "sigmoid",
 //     },
 //     { autoSave: true },
 //     JSON.parse(
-//         `{"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48,24],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":8,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48,24],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[16,8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":16,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[16,8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"hardSigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[20,10],\\"learningRate\\":0.01,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[40,20],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":16,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.0001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":8,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":32,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.0001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":48,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"sigmoid\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":8,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[12,6],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"relu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":16,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":32,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.01,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"tanh\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"tanh\\",\\"hiddenLayerSizes\\":[20,10],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":64,\\"hiddenActivation\\":\\"tanh\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":4,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":24,\\"hiddenActivation\\":\\"tanh\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":8,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.0001,\\"outputActivation\\":\\"hardSigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":64,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[20,10],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":16,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.0005,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":24,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":8,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":48,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.0005,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[48],\\"learningRate\\":0.1,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":32,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[8,4],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[20],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":32,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":16,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"swish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":12,\\"hiddenActivation\\":\\"sigmoid\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":64,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"hardSigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[20,10],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingSize\\":2048,\\"batchSize\\":128,\\"epochs\\":16,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[24,12],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true}`
+//         `{"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.005,\\"outputActivation\\":\\"hardSigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":4,\\"hiddenActivation\\":\\"elu\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true,"{\\"maxTrainingDuration\\":60,\\"epochs\\":200,\\"patience\\":5,\\"batchSize\\":128,\\"hiddenActivation\\":\\"mish\\",\\"hiddenLayerSizes\\":[8],\\"learningRate\\":0.001,\\"outputActivation\\":\\"sigmoid\\"}":true}`
 //     )
 // ).catch((err) => {
 //     console.error(err);
@@ -215,3 +214,13 @@ startModelService();
 //     .catch((err) => {
 //         console.error(err);
 //     });
+
+// (async () => {
+//     console.log("testing");
+//     const results = await LtrPreprocessor.getWatchData({
+//         inputType: "pairs",
+//         trainingPercent: 1,
+//         maxTrainingSize: 4096 * 2 ** 4,
+//         seed: 42,
+//     });
+// })();
