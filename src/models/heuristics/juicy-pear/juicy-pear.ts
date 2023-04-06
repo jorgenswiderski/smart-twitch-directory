@@ -80,6 +80,7 @@ export interface IJuicyPearService {
     getEmbeddingMeanInputs: () => EncodingMeanInputs;
     scoreAndSortStreams: (streams: WatchStream[]) => WatchStreamScored[];
     predictPair: (streamA: WatchStream, streamB: WatchStream) => number;
+    predictSingle: (stream: WatchStream) => number;
 }
 
 export class PairwiseLtr implements IJuicyPearService {
@@ -515,6 +516,15 @@ export class PairwiseLtr implements IJuicyPearService {
         const prediction = this.predict(x).dataSync()[0];
 
         return prediction;
+    }
+
+    predictSingle(stream: WatchStream) {
+        return this.predictPair(stream, {
+            ...stream,
+            // force the encoder to encode neutral values
+            user_id: "-1",
+            game_id: "-1",
+        });
     }
 
     static async crossValidate(

@@ -46,6 +46,28 @@ class NotificationService {
         return sorted[0];
     }
 
+    static async notifyUncontestStreams(streams: WatchStream[]) {
+        await Promise.all(
+            streams.map(async (stream) => {
+                const prediction = await JuicyPearService().predictSingle(
+                    stream
+                );
+
+                log(
+                    `${stream.user_login} (uncontested) prediction:`,
+                    prediction
+                );
+
+                if (prediction > CONFIG.NOTIFICATIONS.UNCONTESTED_MINIMUM) {
+                    await NotificationService.triggerNotification(
+                        stream,
+                        NotificationContext.NEW
+                    );
+                }
+            })
+        );
+    }
+
     async notifyNewStreams(streams: WatchStream[]) {
         const newStreams = streams.filter(
             (stream) =>
@@ -59,16 +81,7 @@ class NotificationService {
         const watchedStreams = this.getWatchedStreams(streams);
 
         if (watchedStreams.length === 0) {
-            await Promise.all(
-                newStreams.map((stream) => {
-                    log(`${stream.user_login} (uncontested)`);
-
-                    return NotificationService.triggerNotification(
-                        stream,
-                        NotificationContext.NEW
-                    );
-                })
-            );
+            await NotificationService.notifyUncontestStreams(newStreams);
             return;
         }
 
