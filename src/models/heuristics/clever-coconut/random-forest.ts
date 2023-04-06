@@ -25,7 +25,7 @@ export class RandomForest {
     private bootstrapDataset(): Record<string, number>[] {
         const bootstrappedDataset: Record<string, number>[] = [];
 
-        for (let i = 0; i < this.dataset.length; i++) {
+        for (let i = 0; i < this.dataset.length; i += 1) {
             const randomIndex = Math.floor(Math.random() * this.dataset.length);
             bootstrappedDataset.push(this.dataset[randomIndex]);
         }
@@ -53,7 +53,7 @@ export class RandomForest {
             );
         }, 10000);
 
-        for (let i = 0; i < numTrees; i++) {
+        for (let i = 0; i < numTrees; i += 1) {
             const bootstrappedDataset = this.bootstrapDataset();
 
             const tree = new DecisionTree(
@@ -82,7 +82,7 @@ export class RandomForest {
 
         const predictions: number[] = [];
 
-        for (let i = 0; i < numPredictions; i++) {
+        for (let i = 0; i < numPredictions; i += 1) {
             let sum = 0;
             let count = 0;
 
@@ -104,7 +104,7 @@ export class RandomForest {
     }
 
     async waitForModel() {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             setInterval(() => {
                 if (this.trees.length === this.options.numTrees) {
                     resolve();

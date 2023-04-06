@@ -13,6 +13,7 @@ class TotemPole implements HeuristicService {
     }
 
     static initScore(scores, stream) {
+        // eslint-disable-next-line no-param-reassign
         scores[stream.user_id] = scores[stream.user_id] || {
             num: 0,
             div: 0,

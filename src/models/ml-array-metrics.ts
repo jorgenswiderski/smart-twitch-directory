@@ -10,7 +10,7 @@ export class MlArrayMetrics {
         const n = yTrue.length;
         let sum = 0;
 
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; i += 1) {
             sum += Math.abs(yTrue[i] - yPred[i]);
         }
 
@@ -28,7 +28,7 @@ export class MlArrayMetrics {
         const n = yTrue.length;
         let sum = 0;
 
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; i += 1) {
             sum += (yTrue[i] - yPred[i]) ** 2;
         }
 
@@ -48,7 +48,7 @@ export class MlArrayMetrics {
         let ssRes = 0;
         let ssTot = 0;
 
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; i += 1) {
             ssRes += (yTrue[i] - yPred[i]) ** 2;
             ssTot += (yTrue[i] - yTrueMean) ** 2;
         }

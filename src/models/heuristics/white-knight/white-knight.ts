@@ -36,7 +36,7 @@ class KNNRegression {
     ): number {
         let sum = 0;
 
-        for (let i = 0; i < pointA.length; i++) {
+        for (let i = 0; i < pointA.length; i += 1) {
             sum += (pointA[i] - pointB[i]) ** 2;
         }
 

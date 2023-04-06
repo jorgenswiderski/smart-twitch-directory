@@ -7,6 +7,7 @@ export class SeededRandomNumberGenerator {
     }
 
     random(): number {
+        // eslint-disable-next-line no-return-assign
         return (this.seed = (this.seed * 16807) % 2147483647) / 2147483647;
     }
 }

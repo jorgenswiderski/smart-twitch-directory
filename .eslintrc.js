@@ -9,6 +9,7 @@ module.exports = {
             extends: ['airbnb-typescript', 'prettier'],
             files: ['*.ts', '*.tsx'],
             rules: {
+                'import/no-extraneous-dependencies': 'off',
                 '@typescript-eslint/lines-between-class-members': 'off',
             }
         },

@@ -1,5 +1,3 @@
-import * as pako from "pako";
-import { debug, log } from "./logger";
 import { SeededRandomNumberGenerator } from "./seeded-rng";
 
 type Difference = {

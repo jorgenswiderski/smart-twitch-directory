@@ -204,7 +204,7 @@ class Minotaur implements HeuristicService {
         );
         const foldSize = Math.floor(limited.length / numFolds);
 
-        for (let i = 0; i < numFolds; i++) {
+        for (let i = 0; i < numFolds; i += 1) {
             const testingSet = [
                 ...limited.slice(i * foldSize, (i + 1) * foldSize),
                 ...extra,
@@ -222,6 +222,7 @@ class Minotaur implements HeuristicService {
             minotaur.data.testing = testingSet;
             minotaur.data.training = trainingSet;
 
+            // eslint-disable-next-line no-await-in-loop
             await minotaur.createModel();
             const { mae, mse, rsq } = minotaur.eval();
 

@@ -1,7 +1,4 @@
-import * as _ from "lodash";
 import { RandomForestRegression } from "ml-random-forest";
-import Browser from "webextension-polyfill";
-import { MessageService, MessageType } from "../../messaging";
 
 interface RandomForestOptions {
     numEstimators: number;
