@@ -7,7 +7,6 @@ import {
     EncodingKeys,
     EncodingMeanInputs,
 } from "../../ml-encoder/ml-encoder";
-import { WatchStream } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
 import { subtractLayer } from "./subtract-layer";
 import { Util } from "../../util";
@@ -16,6 +15,7 @@ import { CONSTANTS } from "../../constants";
 import { TensorModelProxy } from "../../tensor-model-loader/proxy";
 import { TensorModelHost } from "../../tensor-model-loader/host";
 import { log } from "../../logger";
+import { WatchStream } from "../../watch-data/types";
 
 export interface LtrModelStats {
     loss: number;

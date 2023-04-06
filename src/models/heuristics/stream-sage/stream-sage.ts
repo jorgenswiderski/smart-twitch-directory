@@ -1,10 +1,10 @@
 import * as _ from "lodash";
 import DecisionTree from "decision-tree";
 import { StreamSagePreprocessor } from "./preprocess";
-import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
-import { log } from "../../logger";
+import { error, log } from "../../logger";
+import { WatchStream } from "../../watch-data/types";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
@@ -22,7 +22,7 @@ class StreamSage implements HeuristicService {
 
     constructor() {
         this.preprocessor = new StreamSagePreprocessor();
-        this.createModel().catch((err) => error(err));
+        this.createModel().catch(error);
     }
 
     async prepareDataset() {
@@ -96,6 +96,4 @@ log("Loading stream-sage.ts");
 
 export const StreamSageService = new StreamSage();
 
-StreamSageService.createModel().catch((err) => {
-    error(err);
-});
+StreamSageService.createModel().catch(error);

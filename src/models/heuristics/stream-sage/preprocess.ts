@@ -1,9 +1,11 @@
-import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
+import { WatchDataService } from "../../watch-data/watch-data";
 import {
     EncodingInstruction,
     EncodingKeys,
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
+import { WatchStream } from "../../watch-data/types";
+import { error } from "../../logger";
 
 interface SageWatchStream extends WatchStream {
     watched: boolean;

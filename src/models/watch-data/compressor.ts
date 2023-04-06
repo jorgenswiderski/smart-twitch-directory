@@ -2,8 +2,7 @@
 import pako from "pako";
 import { debug } from "../logger";
 import { Util } from "../util";
-import { ActiveWatch } from "./types";
-import { WatchSample, WatchStream } from "./watch-data";
+import { ActiveWatch, WatchSample, WatchStream } from "./types";
 
 interface WatchSampleDeflated {
     time: number;

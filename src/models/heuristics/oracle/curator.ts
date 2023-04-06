@@ -1,6 +1,6 @@
 // eslint-disable-next-line max-classes-per-file
 import { Util } from "../../util";
-import { WatchStreamWithLabel } from "../../watch-data/watch-data";
+import { WatchStreamWithLabel } from "../../watch-data/types";
 
 export class OracleCurator {
     static deduplicate(data: any[]): any[] {

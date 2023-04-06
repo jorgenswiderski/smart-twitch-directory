@@ -1,11 +1,11 @@
 import * as _ from "lodash";
-import { WatchStream } from "../../watch-data/watch-data";
 import { CONSTANTS } from "../../constants";
 import { HeuristicService, WatchStreamScored } from "../types";
 import { RandomForest } from "./random-forest";
 import { StreamSagePreprocessor } from "../stream-sage/preprocess";
 import { MlArrayMetrics } from "../../ml-array-metrics";
-import { log } from "../../logger";
+import { error, log } from "../../logger";
+import { WatchStream } from "../../watch-data/types";
 
 // function pad(arr: any[], len: number, fillValue: any) {
 //     return arr.concat(Array(len).fill(fillValue)).slice(0, len);
@@ -23,7 +23,7 @@ class CleverCoconut implements HeuristicService {
 
     constructor() {
         this.preprocessor = new StreamSagePreprocessor();
-        this.createModel().catch((err) => error(err));
+        this.createModel().catch(error);
     }
 
     async prepareDataset() {

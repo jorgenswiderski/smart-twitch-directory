@@ -5,8 +5,7 @@ import { JuicyPearService } from "../heuristics/juicy-pear/juicy-pear";
 import { LtrPreprocessor } from "../heuristics/juicy-pear/preprocessor";
 import { error, log } from "../logger";
 import { EncodingMeanInputs } from "../ml-encoder/ml-encoder";
-import { ActiveWatch } from "../watch-data/types";
-import { WatchStream } from "../watch-data/watch-data";
+import { ActiveWatch, WatchStream } from "../watch-data/types";
 
 enum NotificationContext {
     NEW,

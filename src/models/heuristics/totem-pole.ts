@@ -1,5 +1,6 @@
 import { CONSTANTS } from "../constants";
-import { WatchDataService, WatchStream } from "../watch-data/watch-data";
+import { WatchStream } from "../watch-data/types";
+import { WatchDataService } from "../watch-data/watch-data";
 import { WatchStreamScored, HeuristicService } from "./types";
 
 class TotemPole implements HeuristicService {

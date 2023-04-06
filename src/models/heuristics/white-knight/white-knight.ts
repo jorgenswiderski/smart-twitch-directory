@@ -5,8 +5,9 @@ import {
     EncodingKeys,
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
-import { WatchDataService, WatchStream } from "../../watch-data/watch-data";
+import { WatchDataService } from "../../watch-data/watch-data";
 import { WatchStreamScored } from "../types";
+import { WatchStream } from "../../watch-data/types";
 
 interface KNNRegressionOptions {
     k: number;

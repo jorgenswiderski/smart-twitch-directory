@@ -1,4 +1,4 @@
-import { WatchStream } from "../watch-data/watch-data";
+import { WatchStream } from "../watch-data/types";
 
 export interface WatchStreamScored extends WatchStream {
     score: number;

@@ -5,8 +5,8 @@ import { CONSTANTS } from "../models/constants";
 import { error, log } from "../models/logger";
 import { MessageService, MessageType } from "../models/messaging";
 import { NotifyService } from "../models/notification-service/notification-service";
-import { ActiveWatch } from "../models/watch-data/types";
-import { WatchDataService, WatchStream } from "../models/watch-data/watch-data";
+import { ActiveWatch, WatchStream } from "../models/watch-data/types";
+import { WatchDataService } from "../models/watch-data/watch-data";
 
 const watchHeartbeats: { [key: string]: number } = {};
 

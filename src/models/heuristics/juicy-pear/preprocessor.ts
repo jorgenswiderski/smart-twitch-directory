@@ -8,12 +8,9 @@ import {
     MachineLearningEncoder,
 } from "../../ml-encoder/ml-encoder";
 import { Util } from "../../util";
-import {
-    WatchDataService,
-    WatchSample,
-    WatchStream,
-} from "../../watch-data/watch-data";
+import { WatchDataService } from "../../watch-data/watch-data";
 import { OracleCurator } from "../oracle/curator";
+import { WatchSample, WatchStream } from "../../watch-data/types";
 
 export type LtrInputType = "pairs" | "points";
 
