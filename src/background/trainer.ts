@@ -12,17 +12,27 @@ import {
     EncodingKeys,
 } from "../models/ml-encoder/ml-encoder";
 
+let isTrainingInProgress = false;
+
 async function trainModel() {
-    await PairwiseLtr.newModel(
-        {
-            maxTrainingSize: 8192,
-        },
-        {
-            autoSave: true,
-            forceSave: true,
-            yieldEvery: 1,
-        }
-    );
+    try {
+        isTrainingInProgress = true;
+
+        await PairwiseLtr.newModel(
+            {
+                maxTrainingSize: 8192,
+            },
+            {
+                autoSave: true,
+                forceSave: true,
+                yieldEvery: 1,
+            }
+        );
+    } catch (err) {
+        error(err);
+    }
+
+    isTrainingInProgress = false;
 }
 
 function getModelAgeInHours({ time }: LtrModelStats): number {
@@ -65,6 +75,10 @@ function isDatasetMuchBigger(
 
 async function checkModel() {
     try {
+        if (isTrainingInProgress) {
+            return;
+        }
+
         const info = await PairwiseLtr.getSavedModelInfo();
 
         const {
