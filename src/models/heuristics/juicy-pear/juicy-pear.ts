@@ -709,9 +709,12 @@ export class PairwiseLtr implements IJuicyPearService {
         await model.train(training.x, training.y);
         const trainingTime = moment().diff(trainingStart, "seconds", true);
 
-        const results = await model.evaluate(testing.x, testing.y);
-
-        log(results);
+        // Skip evaluation if force save is enabled. This will allow the browser
+        // to stay responsive when training in the background, as evaluation can take a very long time.
+        if (!options.forceSave) {
+            const results = await model.evaluate(testing.x, testing.y);
+            log(results);
+        }
 
         log(
             `${this.modelName} creation completed in ${moment().diff(
