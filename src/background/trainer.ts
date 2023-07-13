@@ -26,6 +26,7 @@ async function trainModel() {
                 autoSave: true,
                 forceSave: true,
                 yieldEvery: 1,
+                fastEvaluation: 1000,
             }
         );
     } catch (err) {

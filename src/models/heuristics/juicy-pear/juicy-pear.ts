@@ -71,6 +71,7 @@ interface LtrOptions {
     autoSave?: boolean;
     forceSave?: boolean;
     yieldEvery?: number;
+    fastEvaluation?: number;
 }
 
 // Properties defined here become accessible via TensorModelProxy and therefore JuicyPearService
@@ -709,12 +710,11 @@ export class PairwiseLtr implements IJuicyPearService {
         await model.train(training.x, training.y);
         const trainingTime = moment().diff(trainingStart, "seconds", true);
 
-        // Skip evaluation if force save is enabled. This will allow the browser
-        // to stay responsive when training in the background, as evaluation can take a very long time.
-        if (!options.forceSave) {
-            const results = await model.evaluate(testing.x, testing.y);
-            log(results);
-        }
+        const results = await model.evaluate(
+            testing.x.slice(0, options.fastEvaluation ?? testing.x.length),
+            testing.y.slice(0, options.fastEvaluation ?? testing.y.length)
+        );
+        log(results);
 
         log(
             `${this.modelName} creation completed in ${moment().diff(
