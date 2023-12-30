@@ -63,8 +63,8 @@ export const HelixApi = {
                     },
                 }
             )
-            .catch((error) => {
-                error(error);
+            .catch((err) => {
+                error(err);
             });
     },
 };
