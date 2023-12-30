@@ -76,12 +76,18 @@ export class LtrPreprocessor {
         };
     }
 
-    static calculateStats(
-        data: number[][],
+    static countWeighted(entries: number[][]): number {
+        return entries
+            .map((entry) => entry[entry.length - 1])
+            .reduce((a, b) => a + b);
+    }
+
+    static async calculateStats(
+        xyw: number[][],
         uniqueStreamers: number[],
         uniqueCategories: number[],
         inputType: LtrInputType
-    ): SamplerStats {
+    ): Promise<SamplerStats> {
         const streamers: {
             [key: number]: { positive: number[][]; negative: number[][] };
         } = {};
@@ -91,6 +97,8 @@ export class LtrPreprocessor {
                 negative: [],
             };
         });
+
+        await Util.sleep(100);
 
         const categories: {
             [key: number]: { positive: number[][]; negative: number[][] };
@@ -102,7 +110,9 @@ export class LtrPreprocessor {
             };
         });
 
-        data.forEach((entry) => {
+        await Util.sleep(100);
+
+        xyw.forEach((entry) => {
             if (inputType === "pairs") {
                 streamers[entry[0]].positive.push(entry);
                 streamers[entry[2]].negative.push(entry);
@@ -115,24 +125,51 @@ export class LtrPreprocessor {
             }
         });
 
+        await Util.sleep(100);
+
         const stats: SamplerStats = {
             streamers: {},
             categories: {},
         };
 
-        Object.entries(streamers).forEach(([id, { positive, negative }]) => {
-            stats.streamers[id] = {
-                all: (positive.length + negative.length) / data.length,
-                positive: positive.length / data.length,
-            };
-        });
+        const weightTotal = this.countWeighted(xyw);
+        const streamerEntries = Object.entries(streamers);
 
-        Object.entries(categories).forEach(([id, { positive, negative }]) => {
-            stats.categories[id] = {
-                all: (positive.length + negative.length) / data.length,
-                positive: positive.length / data.length,
+        for (let i = 0; i < streamerEntries.length; i += 1) {
+            const [id, { positive, negative }] = streamerEntries[i];
+            const weightPositive = this.countWeighted(positive);
+
+            stats.streamers[id] = {
+                all:
+                    (weightPositive + this.countWeighted(negative)) /
+                    weightTotal,
+                positive: weightPositive / weightTotal,
             };
-        });
+
+            // eslint-disable-next-line no-await-in-loop
+            await Util.sleep(5);
+        }
+
+        const categoryEntries = Object.entries(categories);
+
+        for (let i = 0; i < categoryEntries.length; i += 1) {
+            const [id, { positive, negative }] = categoryEntries[i];
+            const weightPositive = this.countWeighted(positive);
+
+            stats.categories[id] = {
+                all:
+                    (weightPositive + this.countWeighted(negative)) /
+                    weightTotal,
+                positive: weightPositive / weightTotal,
+            };
+
+            // eslint-disable-next-line no-await-in-loop
+            await Util.sleep(5);
+        }
+
+        log(10, moment().format("HH:mm:ss"));
+
+        // log(stats, statsOld);
 
         return stats;
     }
@@ -140,13 +177,14 @@ export class LtrPreprocessor {
     static updateStats(
         stats: SamplerStats,
         entry: number[],
-        newLength: number,
+        totalWeight: number,
         inputType: LtrInputType
     ): SamplerStats {
         const newStats = JSON.parse(JSON.stringify(stats));
+        const weight = entry[entry.length - 1];
 
-        if (newLength > 1) {
-            const factor = (newLength - 1) / newLength;
+        if (totalWeight > 1) {
+            const factor = (totalWeight - weight) / totalWeight;
 
             Object.values(newStats.streamers).forEach((streamerStats: any) => {
                 // eslint-disable-next-line no-param-reassign
@@ -163,7 +201,7 @@ export class LtrPreprocessor {
             });
         }
 
-        const increment = 1 / newLength;
+        const increment = weight / totalWeight;
 
         newStats.streamers[entry[0]].all += increment;
         newStats.categories[entry[1]].all += increment;
@@ -204,26 +242,35 @@ export class LtrPreprocessor {
     }
 
     static async buildRepresentativeSample(
-        data: number[][],
+        xyw: number[][],
         size: number,
         seed: number,
         inputType: LtrInputType
     ) {
         const uniqueStreamers = Array.from(
-            new Set(data.map((entry) => [entry[0], entry[2]]).flat())
-        ).sort();
-        const uniqueCategories = Array.from(
-            new Set(data.map((entry) => [entry[1], entry[3]]).flat())
+            new Set(xyw.map((entry) => [entry[0], entry[2]]).flat())
         ).sort();
 
-        const stats = this.calculateStats(
-            data,
+        await Util.sleep(100);
+
+        const uniqueCategories = Array.from(
+            new Set(xyw.map((entry) => [entry[1], entry[3]]).flat())
+        ).sort();
+
+        await Util.sleep(100);
+
+        const stats = await this.calculateStats(
+            xyw,
             uniqueStreamers,
             uniqueCategories,
             inputType
         );
 
+        await Util.sleep(100);
+
         let currentStats = JSON.parse(JSON.stringify(stats));
+
+        await Util.sleep(100);
 
         const sample: number[][] = [];
         const pool: Record<number, number[]> = {};
@@ -233,7 +280,7 @@ export class LtrPreprocessor {
         };
 
         Util.shuffleArray(
-            JSON.parse(JSON.stringify(data)) as number[][],
+            JSON.parse(JSON.stringify(xyw)) as number[][],
             seed
         ).forEach((entry, idx) => {
             pool[idx] = entry;
@@ -258,6 +305,8 @@ export class LtrPreprocessor {
                 poolDirectory.categories[entry[3]].negative.push(idx);
             }
         });
+
+        await Util.sleep(100);
 
         for (let i = 0; i < size; i += 1) {
             const streamScores = this.getNetScores(
@@ -300,17 +349,16 @@ export class LtrPreprocessor {
             currentStats = this.updateStats(
                 currentStats,
                 entry,
-                sample.length,
+                this.countWeighted(sample),
                 inputType
             );
 
-            if (sample.length % 25 === 0) {
-                // log(`${sample.length} of ${size}...`);
-            }
+            // if (sample.length % 100 === 0) {
+            //     log(`Building sample (${sample.length} of ${size})...`);
+            // }
 
             // eslint-disable-next-line no-await-in-loop
-            await Util.sleep(100);
-            // await Util.yield();
+            await Util.sleep(10);
         }
 
         // Calculate the MSE
@@ -327,9 +375,18 @@ export class LtrPreprocessor {
         return [sample, Object.values(pool)];
     }
 
-    static convertSamplesToXyPairs(samples: WatchSample[]) {
+    static calculateWeight(sample: WatchSample): number {
+        const entryAge = Date.now() - sample.time;
+        const oneDayInMillis = 24 * 60 * 60 * 1000;
+        const entryAgeInDays = entryAge / oneDayInMillis;
+        const weight = 0.985 ** entryAgeInDays;
+
+        return weight;
+    }
+
+    static convertSamplesToXywPairs(samples: WatchSample[]) {
         // Create pairs
-        const pairs: [number, number, number][] = [];
+        const pairs: [number, number, number, number][] = [];
         const streams = [];
 
         samples.forEach((sample) => {
@@ -350,8 +407,18 @@ export class LtrPreprocessor {
                         sample.followedStreams.findIndex((s) => s === stream2) +
                         streams.length;
 
-                    pairs.push([index1, index2, 1]);
-                    pairs.push([index2, index1, 0]);
+                    pairs.push([
+                        index1,
+                        index2,
+                        1,
+                        this.calculateWeight(sample),
+                    ]);
+                    pairs.push([
+                        index2,
+                        index1,
+                        0,
+                        this.calculateWeight(sample),
+                    ]);
                 });
             });
 
@@ -370,11 +437,16 @@ export class LtrPreprocessor {
             Object.values(stream)
         );
 
-        const xy = deduped.map((entry) =>
-            [encodedValues[entry[0]], encodedValues[entry[1]], entry[2]].flat()
+        const xyw = deduped.map((entry) =>
+            [
+                encodedValues[entry[0]],
+                encodedValues[entry[1]],
+                entry[2],
+                entry[3],
+            ].flat()
         );
 
-        return { encoding, xy };
+        return { encoding, xyw };
     }
 
     static convertSamplesToXyPoints(samples: WatchSample[]) {
@@ -416,14 +488,15 @@ export class LtrPreprocessor {
     }> {
         const samples = await WatchDataService.getData();
 
-        let xy: number[][];
-        let encoding: EncodingKeys;
+        // if (inputType === "pairs") {
 
-        if (inputType === "pairs") {
-            ({ xy, encoding } = this.convertSamplesToXyPairs(samples));
-        } else if (inputType === "points") {
-            ({ xy, encoding } = this.convertSamplesToXyPoints(samples));
-        }
+        const { xyw, encoding } = this.convertSamplesToXywPairs(samples);
+
+        // } else if (inputType === "points") {
+        //     ({ xy, encoding } = this.convertSamplesToXyPoints(samples));
+        // }
+
+        const xy = xyw.map((entry) => entry.slice(0, -1));
 
         const trainingLimit = Math.min(
             maxTrainingSize ?? Number.MAX_SAFE_INTEGER,
@@ -445,7 +518,7 @@ export class LtrPreprocessor {
 
                 [training, testing] =
                     await LtrPreprocessor.buildRepresentativeSample(
-                        xy,
+                        xyw,
                         trainingLimit,
                         seed,
                         inputType

@@ -263,7 +263,7 @@ export class PairwiseLtr implements IJuicyPearService {
     addLongYieldCallback() {
         const callback = {
             onYield: async () => {
-                await Util.sleep(3000);
+                await Util.sleep(100);
             },
         };
 
@@ -699,8 +699,16 @@ export class PairwiseLtr implements IJuicyPearService {
         hyperOptions: LtrHyperOptions,
         options: LtrOptions = {}
     ): Promise<{ model: PairwiseLtr; trainingTime: number }> {
+        log(
+            `Creating a new ${this.modelName} with options=${JSON.stringify(
+                hyperOptions
+            )}...`
+        );
+
         const startTime = moment();
         const { maxTrainingSize, maxTrainingDuration } = hyperOptions;
+
+        log(`Preparing watch data...`);
 
         const {
             data: { training, testing },
@@ -715,11 +723,7 @@ export class PairwiseLtr implements IJuicyPearService {
         model.createModel();
         model.datasetSize.total = training.x.length + testing.x.length;
 
-        log(
-            `Training ${this.modelName} with options=${JSON.stringify(
-                hyperOptions
-            )}...`
-        );
+        log(`Training model...`);
 
         const trainingStart = moment();
         await model.train(training.x, training.y);

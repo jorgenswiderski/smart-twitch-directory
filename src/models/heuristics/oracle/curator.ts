@@ -3,7 +3,7 @@ import { Util } from "../../util";
 import { WatchStreamWithLabel } from "../../watch-data/types";
 
 export class OracleCurator {
-    static deduplicate(data: any[]): any[] {
+    static deduplicate<T>(data: T[]): T[] {
         const seen: { [key: string]: boolean } = {};
         const filtered = [];
 
