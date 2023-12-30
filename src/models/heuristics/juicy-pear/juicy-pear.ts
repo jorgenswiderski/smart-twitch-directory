@@ -391,6 +391,7 @@ export class PairwiseLtr implements IJuicyPearService {
             return { loss, options, datasetSize, time };
         } catch (err) {
             log(err);
+            return null;
         }
     }
 
@@ -404,6 +405,7 @@ export class PairwiseLtr implements IJuicyPearService {
             return { loss, options, datasetSize, time, model };
         } catch (err) {
             log(err);
+            return null;
         }
     }
 
@@ -439,6 +441,7 @@ export class PairwiseLtr implements IJuicyPearService {
             return await this.fromJSON(model);
         } catch (err) {
             log(err);
+            return null;
         }
     }
 
