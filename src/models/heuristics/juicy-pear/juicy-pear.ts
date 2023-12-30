@@ -124,6 +124,8 @@ export class PairwiseLtr implements IJuicyPearService {
         if (hyperOptions.earlyStopping) {
             this.addEarlyStoppingCallback();
         }
+
+        this.addLongYieldCallback();
     }
 
     get static() {
@@ -256,6 +258,16 @@ export class PairwiseLtr implements IJuicyPearService {
         };
 
         this.trainingCallbacks.push(earlyStoppingCallback);
+    }
+
+    addLongYieldCallback() {
+        const callback = {
+            onYield: async () => {
+                await Util.sleep(3000);
+            },
+        };
+
+        this.trainingCallbacks.push(callback);
     }
 
     async train(x: number[][], y: number[][]) {

@@ -28,11 +28,13 @@ export function ChannelsGrid() {
 
             if (response) {
                 const channelData = response.data.data;
-                const scored = await HeuristicService().scoreAndSortStreams(channelData);
+                const scored = await HeuristicService().scoreAndSortStreams(
+                    channelData
+                );
                 setChannels(scored);
             }
         } catch (err) {
-            error(err)
+            error(err);
         }
     }
 
@@ -99,7 +101,7 @@ export function ChannelsGrid() {
                 ...channel,
                 avatar_url: avatars[channel.user_id],
                 // Force change on URL to avoid cache, this allows the thumbnail image to refresh
-                thumbnail_url: `${channel.thumbnail_url}?${Date.now()}`
+                thumbnail_url: `${channel.thumbnail_url}?${Date.now()}`,
             })),
 
         [channels, avatars]
@@ -107,12 +109,12 @@ export function ChannelsGrid() {
 
     return (
         <GridContainer>
-            {isLoaded
-                ? userState.map((user) => (
-                      <ChannelCard data={user} key={user.id as String} />
-                  ))
-                : // <TailSpin color="#a970ff" />
-                  "Loading..."}
-        </GridContainer>
+                {isLoaded
+                    ? userState.map((user) => (
+                          <ChannelCard data={user} key={user.id as String} />
+                      ))
+                    : // <TailSpin color="#a970ff" />
+                      "Loading..."}
+            </GridContainer>
     );
 }

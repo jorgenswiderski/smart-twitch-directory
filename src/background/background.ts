@@ -67,6 +67,8 @@ async function getUserId() {
     if (response) {
         return response.data.data[0].id;
     }
+
+    return undefined;
 }
 
 async function init() {
@@ -91,11 +93,4 @@ async function loadSavedData(): Promise<void> {
 
 if (CONFIG.DEBUG.LOAD_SAVED_DATA) {
     loadSavedData();
-}
-
-if (CONFIG.DEBUG.DUMP_SAVED_DATA) {
-    (async () => {
-        const data = await Browser.storage.local.get();
-        log(data);
-    })();
 }

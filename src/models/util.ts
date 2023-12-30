@@ -81,6 +81,14 @@ export class Util {
         });
     }
 
+    static async sleep(ms: number): Promise<void> {
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, ms);
+        });
+    }
+
     // Return a deep copy of the object, but with its keys in sorted order at every level.
     static deepSortKeys<T>(obj: T): T {
         if (Array.isArray(obj)) {

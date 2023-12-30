@@ -309,7 +309,8 @@ export class LtrPreprocessor {
             }
 
             // eslint-disable-next-line no-await-in-loop
-            await Util.yield();
+            await Util.sleep(100);
+            // await Util.yield();
         }
 
         // Calculate the MSE
